@@ -14,6 +14,7 @@
 		A1000001233333330000001E /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001233333330000000E /* SettingsView.swift */; };
 		A1000001233333330000001F /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001233333330000000F /* NotificationService.swift */; };
 		A10000012333333300000020 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000012333333300000010 /* Assets.xcassets */; };
+		A10000012333333300000022 /* StatusBarController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000012333333300000013 /* StatusBarController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		A1000001233333330000000F /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
 		A10000012333333300000010 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A10000012333333300000011 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A10000012333333300000013 /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -51,6 +53,7 @@
 			isa = PBXGroup;
 			children = (
 				A1000001233333330000000A /* ClaudeTraceMenuBarApp.swift */,
+				A10000012333333300000013 /* StatusBarController.swift */,
 				A10000012333333300000006 /* Models */,
 				A10000012333333300000007 /* Views */,
 				A10000012333333300000008 /* Services */,
@@ -164,6 +167,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1000001233333330000001A /* ClaudeTraceMenuBarApp.swift in Sources */,
+				A10000012333333300000022 /* StatusBarController.swift in Sources */,
 				A1000001233333330000001B /* ProcessMonitor.swift in Sources */,
 				A1000001233333330000001C /* MenuBarView.swift in Sources */,
 				A1000001233333330000001D /* ProcessRowView.swift in Sources */,
