@@ -67,6 +67,8 @@ OUTPUT FIELDS:
     STATE    Process state (R=running, S=sleeping, etc.)
     TIME     Cumulative CPU time
     COMMAND  Process command/arguments
+    CWD      Current working directory (with -v/--verbose)
+    PROJECT  Project name derived from CWD (with -v/--verbose)
 EOF
 }
 
@@ -179,6 +181,30 @@ get_thread_count() {
     fi
 }
 
+# Get current working directory for a PID
+get_cwd() {
+    local pid=$1
+    local result=""
+    if [[ "$OS_TYPE" == "darwin" ]]; then
+        # macOS: use lsof to find cwd
+        result=$(lsof -p "$pid" 2>/dev/null | awk '$4 == "cwd" {print $NF; exit}' || true)
+    else
+        # Linux: readlink on /proc
+        result=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)
+    fi
+    echo "$result"
+}
+
+# Extract project name from path (last directory component)
+get_project_name() {
+    local cwd=$1
+    if [[ -n "$cwd" ]]; then
+        basename "$cwd"
+    else
+        echo ""
+    fi
+}
+
 # Format bytes to human readable
 format_bytes() {
     local kb=$1
@@ -226,12 +252,16 @@ output_json() {
 PROC
 )
         if $VERBOSE; then
-            local open_files threads
+            local open_files threads cwd project
             open_files=$(get_open_files "$p_pid")
             threads=$(get_thread_count "$p_pid")
+            cwd=$(get_cwd "$p_pid")
+            project=$(get_project_name "$cwd")
             proc_json+=",
     \"open_files\": $open_files,
-    \"threads\": $threads"
+    \"threads\": $threads,
+    \"cwd\": \"$(echo "$cwd" | sed 's/"/\\"/g')\",
+    \"project\": \"$(echo "$project" | sed 's/"/\\"/g')\""
         fi
 
         proc_json+="
@@ -266,19 +296,22 @@ JSON
 # Print table header
 print_header() {
     if $VERBOSE; then
-        printf "${BOLD}%-7s %-7s %6s %6s %9s %9s %5s %6s %12s %-40s${RESET}\n" \
-            "PID" "PPID" "CPU%" "MEM%" "RSS" "VSZ" "STATE" "THRDS" "TIME" "COMMAND"
+        printf "${BOLD}%-7s %-7s %6s %6s %9s %5s %6s %12s %-20s %-50s${RESET}\n" \
+            "PID" "PPID" "CPU%" "MEM%" "RSS" "STATE" "THRDS" "TIME" "PROJECT" "CWD"
+        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..140})"
     else
         printf "${BOLD}%-7s %-7s %6s %6s %9s %5s %12s %-50s${RESET}\n" \
             "PID" "PPID" "CPU%" "MEM%" "RSS" "STATE" "TIME" "COMMAND"
+        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
     fi
-    printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
 }
 
 # Print process row
 print_row() {
     local pid=$1 ppid=$2 cpu=$3 mem=$4 rss=$5 vsz=$6 state=$7 time=$8 cmd=$9
     local threads=${10:-}
+    local cwd=${11:-}
+    local project=${12:-}
 
     # Color coding based on CPU usage
     local cpu_color=""
@@ -302,14 +335,25 @@ print_row() {
     rss_human=$(format_bytes "$rss")
     vsz_human=$(format_bytes "$vsz")
 
-    # Truncate command
-    local cmd_truncated="${cmd:0:50}"
-    [[ ${#cmd} -gt 50 ]] && cmd_truncated="${cmd_truncated}..."
-
     if $VERBOSE; then
-        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s %9s %5s %6s %12s %-40s%s\n" \
-            "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$vsz_human" "$state" "$threads" "$time" "$cmd_truncated" "$warning"
+        # Truncate project and cwd for display
+        local project_truncated="${project:0:20}"
+        [[ ${#project} -gt 20 ]] && project_truncated="${project_truncated:0:17}..."
+
+        local cwd_truncated="${cwd:0:50}"
+        [[ ${#cwd} -gt 50 ]] && cwd_truncated="${cwd_truncated}..."
+
+        # Use dimmed text for empty values
+        [[ -z "$project" ]] && project_truncated="${DIM}-${RESET}"
+        [[ -z "$cwd" ]] && cwd_truncated="${DIM}-${RESET}"
+
+        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s %5s %6s %12s %-20s %-50s%s\n" \
+            "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$threads" "$time" "$project_truncated" "$cwd_truncated" "$warning"
     else
+        # Truncate command
+        local cmd_truncated="${cmd:0:50}"
+        [[ ${#cmd} -gt 50 ]] && cmd_truncated="${cmd_truncated}..."
+
         printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s %5s %12s %-50s%s\n" \
             "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$time" "$cmd_truncated" "$warning"
     fi
@@ -319,7 +363,11 @@ print_row() {
 print_totals() {
     local count=$1 cpu=$2 mem=$3 rss=$4
 
-    printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
+    if $VERBOSE; then
+        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..140})"
+    else
+        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
+    fi
 
     local cpu_color=""
     local cpu_int=${cpu%.*}
@@ -389,12 +437,14 @@ output_table() {
 
         read -r p_pid p_ppid p_cpu p_mem p_rss p_vsz p_state p_time p_cmd <<< "$info"
 
-        local threads=""
+        local threads="" cwd="" project=""
         if $VERBOSE; then
             threads=$(get_thread_count "$p_pid")
+            cwd=$(get_cwd "$p_pid")
+            project=$(get_project_name "$cwd")
         fi
 
-        print_row "$p_pid" "$p_ppid" "$p_cpu" "$p_mem" "$p_rss" "$p_vsz" "$p_state" "$p_time" "$p_cmd" "$threads"
+        print_row "$p_pid" "$p_ppid" "$p_cpu" "$p_mem" "$p_rss" "$p_vsz" "$p_state" "$p_time" "$p_cmd" "$threads" "$cwd" "$project"
 
         total_cpu=$(echo "$total_cpu + $p_cpu" | bc)
         total_mem=$(echo "$total_mem + $p_mem" | bc)

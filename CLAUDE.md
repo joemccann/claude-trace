@@ -48,6 +48,7 @@ cargo build --release
 - Functions prefixed descriptively: `get_*`, `print_*`, `output_*`
 - Support both Darwin (macOS) and Linux where feasible
 - Color output via ANSI codes: RED (>=80% CPU), YELLOW (>=50%), CYAN (>=20%)
+- Verbose mode (`-v`) adds: thread count, open files, working directory (CWD), and project name
 
 ### Rust (`claude-diagnose`)
 - Use `clap` derive macros for CLI argument parsing
@@ -94,6 +95,37 @@ cargo test
 - Edit `categorize_syscall()` in `src/main.rs` to adjust syscall groupings
 - Categories: file, network, memory, process, event, time, ipc, other
 
+## Output Fields
+
+### Standard Mode (`claude-trace`)
+| Field | Description |
+|-------|-------------|
+| PID | Process ID |
+| PPID | Parent Process ID |
+| CPU% | CPU utilization percentage |
+| MEM% | Memory utilization percentage |
+| RSS | Resident Set Size (physical memory) |
+| STATE | Process state (R=running, S=sleeping, S+=foreground) |
+| TIME | Cumulative CPU time |
+| COMMAND | Process command/arguments (truncated) |
+
+### Verbose Mode (`claude-trace -v`)
+| Field | Description |
+|-------|-------------|
+| PID | Process ID |
+| PPID | Parent Process ID |
+| CPU% | CPU utilization percentage |
+| MEM% | Memory utilization percentage |
+| RSS | Resident Set Size (physical memory) |
+| STATE | Process state |
+| THRDS | Thread count |
+| TIME | Cumulative CPU time |
+| PROJECT | Project name (derived from working directory basename) |
+| CWD | Current working directory (absolute path where Claude is running) |
+
+### JSON Output (`-j -v`)
+Additional fields in verbose JSON: `open_files`, `threads`, `cwd`, `project`
+
 ## Platform Notes
 
 - **Primary platform**: macOS (Darwin)
@@ -104,16 +136,19 @@ cargo test
 
 1. **Quick scan**: `./claude-trace` to see all Claude processes
 2. **Watch mode**: `./claude-trace -w 2` for continuous monitoring
-3. **Deep dive**: `./target/release/claude-diagnose --pid <PID> -d -s --sample-duration 10`
-4. **JSON pipeline**: `./claude-trace -j | jq '.processes[] | select(.cpu > 50)'`
-5. **Syscall tracing**: `sudo ./target/release/claude-diagnose --pid <PID> -D --duration 10`
-6. **I/O analysis**: `sudo ./target/release/claude-diagnose --pid <PID> -D --io`
-7. **Network analysis**: `sudo ./target/release/claude-diagnose --pid <PID> -D --network`
-8. **Flamegraph**: `sudo ./target/release/claude-diagnose --pid <PID> -D --flamegraph -o trace.svg`
+3. **Project view**: `./claude-trace -v` to see working directory and project name for each process
+4. **Deep dive**: `./target/release/claude-diagnose --pid <PID> -d -s --sample-duration 10`
+5. **JSON pipeline**: `./claude-trace -j | jq '.processes[] | select(.cpu > 50)'`
+6. **Filter by project**: `./claude-trace -j -v | jq '.processes[] | select(.project == "myproject")'`
+7. **Syscall tracing**: `sudo ./target/release/claude-diagnose --pid <PID> -D --duration 10`
+8. **I/O analysis**: `sudo ./target/release/claude-diagnose --pid <PID> -D --io`
+9. **Network analysis**: `sudo ./target/release/claude-diagnose --pid <PID> -D --network`
+10. **Flamegraph**: `sudo ./target/release/claude-diagnose --pid <PID> -D --flamegraph -o trace.svg`
 
 ## Performance Considerations
 
 - Bash script is intentionally lightweight for frequent polling
+- Verbose mode (`-v`) adds `lsof` calls per process which increases execution time
 - Rust binary uses LTO and stripping for optimized binary size
 - Stack sampling (`sample`) is expensive - use judiciously with `--sample-duration`
 - DTrace/dtruss adds overhead to traced process - keep `--duration` reasonable (5-30s)
