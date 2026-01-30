@@ -34,6 +34,7 @@ JSON_OUTPUT=false
 VERBOSE=false
 SHOW_TREE=false
 CPU_THRESHOLD=0
+MEM_THRESHOLD=0  # RSS threshold in MB (0 = disabled)
 
 usage() {
     cat << 'EOF'
@@ -48,6 +49,7 @@ OPTIONS:
     -v, --verbose             Include file descriptors, threads, and open files
     -t, --tree                Show process hierarchy tree
     -k, --kill-threshold N    Highlight processes exceeding N% CPU
+    -m, --mem-threshold N     Highlight processes exceeding N MB RSS memory
     -h, --help                Show this help message
 
 EXAMPLES:
@@ -55,6 +57,7 @@ EXAMPLES:
     claude-trace -w 5               # Watch mode, refresh every 5s
     claude-trace -j | jq            # JSON output piped to jq
     claude-trace -v -k 50           # Verbose with 50% CPU warning threshold
+    claude-trace -m 512             # Warn when RSS exceeds 512MB
     claude-trace -t                 # Show process tree
 
 OUTPUT FIELDS:
@@ -97,6 +100,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         -k|--kill-threshold)
             CPU_THRESHOLD=${2:-80}
+            shift 2
+            ;;
+        -m|--mem-threshold)
+            MEM_THRESHOLD=${2:-512}
             shift 2
             ;;
         -h|--help)
@@ -330,10 +337,30 @@ print_row() {
         cpu_color=$CYAN
     fi
 
-    # Threshold warning
+    # Color coding based on RSS memory (thresholds in KB)
+    # >=1GB: RED, >=512MB: YELLOW, >=256MB: CYAN
+    local rss_color=""
+    if (( rss >= 1048576 )); then      # >= 1GB
+        rss_color=$RED
+    elif (( rss >= 524288 )); then     # >= 512MB
+        rss_color=$YELLOW
+    elif (( rss >= 262144 )); then     # >= 256MB
+        rss_color=$CYAN
+    fi
+
+    # Threshold warnings
     local warning=""
     if (( CPU_THRESHOLD > 0 && cpu_int >= CPU_THRESHOLD )); then
-        warning=" ${RED}⚠ EXCEEDS THRESHOLD${RESET}"
+        warning=" ${RED}⚠ CPU EXCEEDS THRESHOLD${RESET}"
+    fi
+    # MEM_THRESHOLD is in MB, rss is in KB
+    local mem_threshold_kb=$((MEM_THRESHOLD * 1024))
+    if (( MEM_THRESHOLD > 0 && rss >= mem_threshold_kb )); then
+        if [[ -n "$warning" ]]; then
+            warning+=" ${RED}⚠ MEM EXCEEDS THRESHOLD${RESET}"
+        else
+            warning=" ${RED}⚠ MEM EXCEEDS THRESHOLD${RESET}"
+        fi
     fi
 
     local rss_human vsz_human
@@ -352,14 +379,14 @@ print_row() {
         [[ -z "$project" ]] && project_truncated="${DIM}-${RESET}"
         [[ -z "$cwd" ]] && cwd_truncated="${DIM}-${RESET}"
 
-        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s %5s %6s %12s %-20s %-50s%s\n" \
+        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s ${rss_color}%9s${RESET} %5s %6s %12s %-20s %-50s%s\n" \
             "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$threads" "$time" "$project_truncated" "$cwd_truncated" "$warning"
     else
         # Truncate command
         local cmd_truncated="${cmd:0:50}"
         [[ ${#cmd} -gt 50 ]] && cmd_truncated="${cmd_truncated}..."
 
-        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s %5s %12s %-50s%s\n" \
+        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s ${rss_color}%9s${RESET} %5s %12s %-50s%s\n" \
             "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$time" "$cmd_truncated" "$warning"
     fi
 }
@@ -382,10 +409,21 @@ print_totals() {
         cpu_color=$YELLOW
     fi
 
+    # Color coding for total RSS (thresholds in KB)
+    # >=2GB: RED, >=1GB: YELLOW, >=512MB: CYAN
+    local rss_color=""
+    if (( rss >= 2097152 )); then      # >= 2GB
+        rss_color=$RED
+    elif (( rss >= 1048576 )); then    # >= 1GB
+        rss_color=$YELLOW
+    elif (( rss >= 524288 )); then     # >= 512MB
+        rss_color=$CYAN
+    fi
+
     local rss_human
     rss_human=$(format_bytes "$rss")
 
-    printf "${BOLD}%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s${RESET}\n" \
+    printf "${BOLD}%-7s %-7s ${cpu_color}%6s${RESET} %6s ${rss_color}%9s${RESET}\n" \
         "TOTAL" "($count)" "$cpu%" "$mem%" "$rss_human"
 }
 
@@ -464,6 +502,14 @@ output_table() {
     if (( cpu_int >= 100 )); then
         echo -e "\n${RED}⚠ WARNING: High aggregate CPU usage (${total_cpu}%)${RESET}"
         echo -e "${DIM}  Consider: claude-trace -v to check thread/file counts${RESET}"
+    fi
+
+    # Memory health assessment (warn if total RSS >= 2GB)
+    if (( total_rss >= 2097152 )); then
+        local rss_human
+        rss_human=$(format_bytes "$total_rss")
+        echo -e "\n${RED}⚠ WARNING: High aggregate memory usage (${rss_human})${RESET}"
+        echo -e "${DIM}  Consider: Closing unused Claude sessions or restarting high-memory processes${RESET}"
     fi
 
     # Show tree if requested
