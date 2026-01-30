@@ -267,7 +267,13 @@ fn get_claude_pids_filtered(target_pid: Option<u32>) -> Vec<ProcessInfo> {
         return processes;
     }
 
-    let claude_pattern = Regex::new(r"(?i)(claude|anthropic)").unwrap();
+    // Match only actual Claude binaries against the COMMAND field:
+    //   - "^claude " or "^claude$" - the CLI binary as direct command
+    //   - "/claude " - the CLI binary with full path
+    //   - ".local/share/claude/" - Claude's Node.js runtime
+    //   - "/anthropic/" in path
+    // Does NOT match apps with "claude" only in arguments (e.g., workspace paths)
+    let claude_pattern = Regex::new(r"(^claude(\s|$)|/claude\s|\.local/share/claude/|/anthropic/)").unwrap();
     let exclude_pattern = Regex::new(r"(grep|claude-trace|claude-diagnose)").unwrap();
 
     for line in stdout.lines().skip(1) {
@@ -323,12 +329,14 @@ fn get_claude_pids_filtered(target_pid: Option<u32>) -> Vec<ProcessInfo> {
         let is_target_pid = target_pid.map(|t| t == pid).unwrap_or(false);
 
         // For the target PID, we trust the user knows it's a Claude process
-        // For discovery mode, apply the Claude pattern filter
+        // For discovery mode, apply the Claude pattern filter against the COMMAND field
         if !is_target_pid {
-            if !claude_pattern.is_match(line) {
+            // Match against the command (not the whole line) to avoid false positives
+            // from apps that have "claude" in their arguments (e.g., workspace paths)
+            if !claude_pattern.is_match(command) {
                 continue;
             }
-            if exclude_pattern.is_match(line) {
+            if exclude_pattern.is_match(command) {
                 continue;
             }
         }

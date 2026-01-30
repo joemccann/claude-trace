@@ -122,26 +122,31 @@ detect_os() {
 
 OS_TYPE=$(detect_os)
 
-# Get Claude processes - matches various Claude Code CLI patterns
+# Get Claude processes - matches Claude Code CLI patterns specifically
+# Matches:
+#   - "claude" or "claude " at start of command (the CLI binary)
+#   - ".local/share/claude/" (Claude's Node.js runtime)
+# Does NOT match:
+#   - Random apps with "claude" in arguments (e.g., workspace paths)
 get_claude_pids() {
     local pids=()
 
     if [[ "$OS_TYPE" == "darwin" ]]; then
         # macOS: use ps with extended regex
-        # Match: claude, Claude, node.*claude, Electron.*claude
+        # Match only actual Claude binaries, not apps with "claude" in args
         while IFS= read -r pid; do
             [[ -n "$pid" ]] && pids+=("$pid")
         done < <(ps -Ao pid,command 2>/dev/null | \
-            grep -iE '(claude|anthropic)' | \
-            grep -vE '(grep|claude-trace)' | \
+            grep -E '(^[[:space:]]*[0-9]+[[:space:]]+(claude[[:space:]]|/.*claude[[:space:]])|\.local/share/claude/|/anthropic/)' | \
+            grep -vE '(grep|claude-trace|claude-diagnose)' | \
             awk '{print $1}')
     else
         # Linux: use pgrep or ps
         while IFS= read -r pid; do
             [[ -n "$pid" ]] && pids+=("$pid")
         done < <(ps aux 2>/dev/null | \
-            grep -iE '(claude|anthropic)' | \
-            grep -vE '(grep|claude-trace)' | \
+            grep -E '(claude[[:space:]]|\.local/share/claude/|/anthropic/)' | \
+            grep -vE '(grep|claude-trace|claude-diagnose)' | \
             awk '{print $2}')
     fi
 

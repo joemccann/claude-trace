@@ -82,8 +82,16 @@ cargo test
 - **Rust**: Add field to `Cli` struct with `#[arg(...)]` attribute
 
 ### Modifying process discovery
-- Pattern: regex matching "claude" or "anthropic" in process command
-- Location: `get_claude_pids()` in both tools
+- Location: `get_claude_pids()` in Bash, `get_claude_pids_filtered()` in Rust
+- Pattern matches against the COMMAND field specifically (not full ps line) to avoid false positives
+- **Matches:**
+  - `^claude\s` or `^claude$` - the CLI binary as direct command
+  - `/claude\s` - the CLI binary with full path
+  - `.local/share/claude/` - Claude's Node.js runtime
+  - `/anthropic/` - Anthropic binaries
+- **Does NOT match:**
+  - Apps with "claude" only in arguments (e.g., workspace paths, folder names)
+  - Scripts in directories named "claude" unless they ARE the claude binary
 
 ### Adding new DTrace analysis
 1. Add syscall detection in `parse_dtruss_output()` or create specialized extractor
