@@ -32,6 +32,16 @@ Built with **Bash + Rust** for zero-dependency monitoring that's as fast as the 
 ./claude-diagnose --pid <PID> -d -s
 ```
 
+### See Everything at a Glance
+
+Run `./claude-trace -v` to get a full picture of every Claude session on your machine — which projects they're in, how much CPU and memory they're consuming, and how long they've been running.
+
+<p align="center">
+  <img src="assets/trace-1.png" alt="Claude Trace Output" width="900" />
+</p>
+
+When aggregate CPU exceeds 100%, you'll get an instant warning with suggested diagnostic commands. No more wondering why your fan is spinning — now you know exactly which session to kill or investigate.
+
 ## Installation
 
 ```bash
