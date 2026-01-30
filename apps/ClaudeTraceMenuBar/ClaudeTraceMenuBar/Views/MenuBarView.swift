@@ -6,6 +6,11 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Alert banner (shown when notification is clicked)
+            if let alert = monitor.activeAlert {
+                alertBanner(alert)
+            }
+
             // Header with summary
             headerSection
 
@@ -27,6 +32,71 @@ struct MenuBarView: View {
         }
         .padding(8)
         .frame(width: 320)
+    }
+
+    // MARK: - Alert Banner
+
+    private func alertBanner(_ alert: AlertInfo) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Image(systemName: alert.icon)
+                    .foregroundStyle(.white)
+                Text(alert.type.rawValue)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Spacer()
+                Button(action: { monitor.activeAlert = nil }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Threshold")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text(alert.threshold)
+                        .font(.system(.caption, design: .monospaced, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Actual")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                    Text(alert.actual)
+                        .font(.system(.caption, design: .monospaced, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+
+                if let processName = alert.processName {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Process")
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.7))
+                        Text(processName)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                    }
+                }
+            }
+
+            if alert.isAggregate {
+                Text("Total across all Claude processes")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(alert.type == .aggregateCPU || alert.type == .processCPU ? Color.orange : Color.purple)
+        )
+        .padding(.bottom, 8)
     }
 
     // MARK: - Header Section

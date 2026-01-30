@@ -106,7 +106,14 @@ final class NotificationService: NSObject {
 
     // MARK: - Sending Notifications
 
-    func sendNotification(type: NotificationType, title: String, body: String) {
+    func sendNotification(
+        type: NotificationType,
+        title: String,
+        body: String,
+        threshold: String? = nil,
+        actual: String? = nil,
+        processName: String? = nil
+    ) {
         guard notificationsEnabled else { return }
         guard !isThrottled(type: type) else { return }
 
@@ -118,15 +125,33 @@ final class NotificationService: NSObject {
         content.categoryIdentifier = type.categoryIdentifier
         content.interruptionLevel = .timeSensitive
 
-        // Add process info to userInfo for click handling
-        var userInfo: [String: Any] = ["notificationType": type.identifier]
+        // Add alert info to userInfo for click handling
+        var userInfo: [String: Any] = [
+            "notificationType": type.identifier,
+            "alertTitle": title,
+            "alertBody": body
+        ]
+
+        // Include threshold and actual values
+        if let threshold = threshold {
+            userInfo["threshold"] = threshold
+        }
+        if let actual = actual {
+            userInfo["actual"] = actual
+        }
+        if let processName = processName {
+            userInfo["processName"] = processName
+        }
 
         // Include PID for per-process notifications
         switch type {
         case .highProcessCPU(let pid), .highProcessMemory(let pid):
             userInfo["pid"] = pid
-        default:
-            break
+            userInfo["alertType"] = type.categoryIdentifier == "CPU_ALERT" ? "processCPU" : "processMemory"
+        case .highAggregateCPU:
+            userInfo["alertType"] = "aggregateCPU"
+        case .highAggregateMemory:
+            userInfo["alertType"] = "aggregateMemory"
         }
         content.userInfo = userInfo
 

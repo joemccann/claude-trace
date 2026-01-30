@@ -70,9 +70,15 @@ class StatusBarController: NSObject, ObservableObject {
     }
 
     @objc private func handleOpenPopover(_ notification: Notification) {
+        guard let userInfo = notification.userInfo else {
+            DispatchQueue.main.async { [weak self] in
+                self?.showPopover()
+            }
+            return
+        }
+
         // Extract PID if present
-        if let userInfo = notification.userInfo,
-           let pid = userInfo["pid"] as? Int {
+        if let pid = userInfo["pid"] as? Int {
             monitor.highlightedPid = pid
 
             // Clear highlight after 5 seconds
@@ -83,9 +89,40 @@ class StatusBarController: NSObject, ObservableObject {
             }
         }
 
+        // Build alert info from notification data
+        if let alertTypeString = userInfo["alertType"] as? String,
+           let alertType = AlertInfo.AlertType(rawValue: alertTypeString) ?? alertTypeFromString(alertTypeString) {
+            let alertInfo = AlertInfo(
+                type: alertType,
+                message: userInfo["alertBody"] as? String ?? "",
+                threshold: userInfo["threshold"] as? String ?? "N/A",
+                actual: userInfo["actual"] as? String ?? "N/A",
+                processName: userInfo["processName"] as? String,
+                pid: userInfo["pid"] as? Int
+            )
+            monitor.activeAlert = alertInfo
+
+            // Clear alert after 10 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                if self?.monitor.activeAlert == alertInfo {
+                    self?.monitor.activeAlert = nil
+                }
+            }
+        }
+
         // Show the popover
         DispatchQueue.main.async { [weak self] in
             self?.showPopover()
+        }
+    }
+
+    private func alertTypeFromString(_ string: String) -> AlertInfo.AlertType? {
+        switch string {
+        case "aggregateCPU": return .aggregateCPU
+        case "aggregateMemory": return .aggregateMemory
+        case "processCPU": return .processCPU
+        case "processMemory": return .processMemory
+        default: return nil
         }
     }
 

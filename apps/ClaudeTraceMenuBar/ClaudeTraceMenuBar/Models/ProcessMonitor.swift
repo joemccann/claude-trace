@@ -97,6 +97,42 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - Alert Info (shown when notification is clicked)
+
+struct AlertInfo: Equatable {
+    enum AlertType: String {
+        case aggregateCPU = "Total CPU Exceeded"
+        case aggregateMemory = "Total Memory Exceeded"
+        case processCPU = "Process CPU Exceeded"
+        case processMemory = "Process Memory Exceeded"
+    }
+
+    let type: AlertType
+    let message: String
+    let threshold: String
+    let actual: String
+    let processName: String?
+    let pid: Int?
+
+    var icon: String {
+        switch type {
+        case .aggregateCPU, .processCPU:
+            return "cpu"
+        case .aggregateMemory, .processMemory:
+            return "memorychip"
+        }
+    }
+
+    var isAggregate: Bool {
+        switch type {
+        case .aggregateCPU, .aggregateMemory:
+            return true
+        case .processCPU, .processMemory:
+            return false
+        }
+    }
+}
+
 // MARK: - Process Monitor
 
 @Observable
@@ -110,6 +146,9 @@ final class ProcessMonitor {
 
     // Highlighted process (from notification click)
     var highlightedPid: Int?
+
+    // Alert info (shown when notification is clicked)
+    var activeAlert: AlertInfo?
 
     // Stable process order - preserves order to prevent UI jumping
     // PIDs are added in order of first appearance, removed when process exits
@@ -289,7 +328,9 @@ final class ProcessMonitor {
             notificationService.sendNotification(
                 type: .highAggregateCPU,
                 title: "High CPU Usage",
-                body: String(format: "Total Claude CPU: %.1f%%", totals.cpuPercent)
+                body: String(format: "Total Claude CPU: %.1f%%", totals.cpuPercent),
+                threshold: String(format: "%.0f%%", cpuThreshold),
+                actual: String(format: "%.1f%%", totals.cpuPercent)
             )
         }
 
@@ -299,7 +340,9 @@ final class ProcessMonitor {
             notificationService.sendNotification(
                 type: .highAggregateMemory,
                 title: "High Memory Usage",
-                body: "Total Claude RSS: \(totals.rssHuman)"
+                body: "Total Claude RSS: \(totals.rssHuman)",
+                threshold: "\(memoryThresholdMB) MB",
+                actual: totals.rssHuman
             )
         }
 
@@ -310,7 +353,10 @@ final class ProcessMonitor {
                     type: .highProcessCPU(pid: process.pid),
                     title: "High Process CPU",
                     body: String(format: "%@ (PID %d): %.1f%% CPU",
-                                process.displayName, process.pid, process.cpuPercent)
+                                process.displayName, process.pid, process.cpuPercent),
+                    threshold: String(format: "%.0f%%", perProcessCpuThreshold),
+                    actual: String(format: "%.1f%%", process.cpuPercent),
+                    processName: process.displayName
                 )
             }
 
@@ -319,7 +365,10 @@ final class ProcessMonitor {
                 notificationService.sendNotification(
                     type: .highProcessMemory(pid: process.pid),
                     title: "High Process Memory",
-                    body: "\(process.displayName) (PID \(process.pid)): \(process.rssHuman)"
+                    body: "\(process.displayName) (PID \(process.pid)): \(process.rssHuman)",
+                    threshold: "\(perProcessMemThresholdMB) MB",
+                    actual: process.rssHuman,
+                    processName: process.displayName
                 )
             }
         }
