@@ -10,6 +10,7 @@ debug/
 *.d
 
 # Swift/Xcode build artifacts
+/build/
 apps/ClaudeTraceMenuBar/build/
 apps/ClaudeTraceMenuBar/DerivedData/
 *.xcuserstate

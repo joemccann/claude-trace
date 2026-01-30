@@ -6,6 +6,7 @@
 #   ./dev.sh              # Build all and show status
 #   ./dev.sh build        # Build Rust binary only
 #   ./dev.sh build-app    # Build the menu bar app
+#   ./dev.sh install      # Build and install menu bar app to /Applications
 #   ./dev.sh trace        # Run the Bash monitor (claude-trace)
 #   ./dev.sh diagnose     # Run the Rust diagnostics (claude-diagnose)
 #   ./dev.sh watch        # Run trace in watch mode
@@ -48,6 +49,7 @@ COMMANDS:
     build           Build the Rust binary (release mode)
     build-app       Build the macOS menu bar app (requires Xcode)
     build-all       Build both CLI tools and menu bar app
+    install         Build and install menu bar app to /Applications
     trace [opts]    Run the Bash monitor (claude-trace)
     diagnose [opts] Run the Rust diagnostics (claude-diagnose)
     watch [secs]    Run trace in watch mode (default: 2s interval)
@@ -60,6 +62,7 @@ EXAMPLES:
     ./dev.sh                    # Build CLI tools, show status
     ./dev.sh build              # Build Rust binary
     ./dev.sh build-app          # Build menu bar app
+    ./dev.sh install            # Install menu bar app to /Applications
     ./dev.sh trace              # One-shot process list
     ./dev.sh trace -v           # Verbose mode
     ./dev.sh trace -j | jq      # JSON output
@@ -142,6 +145,44 @@ build_all() {
     build_rust
     echo ""
     build_app
+}
+
+# Install the menu bar app to /Applications
+install_app() {
+    check_xcode
+    local archive_path="$PROJECT_DIR/build/ClaudeTraceMenuBar.xcarchive"
+    local app_source="$archive_path/Products/Applications/ClaudeTraceMenuBar.app"
+    local app_dest="/Applications/ClaudeTraceMenuBar.app"
+
+    info "Building release archive..."
+    mkdir -p "$PROJECT_DIR/build"
+
+    if ! xcodebuild -project "$APP_PROJECT" \
+        -scheme ClaudeTraceMenuBar \
+        -configuration Release \
+        -archivePath "$archive_path" \
+        archive 2>&1 | tail -3; then
+        error "Archive build failed"
+        exit 1
+    fi
+
+    # Check if app exists and prompt for replacement
+    if [[ -d "$app_dest" ]]; then
+        info "Removing existing installation..."
+        rm -rf "$app_dest"
+    fi
+
+    info "Installing to /Applications..."
+    if cp -R "$app_source" "$app_dest"; then
+        success "Installed: $app_dest"
+        echo ""
+        info "To launch: open /Applications/ClaudeTraceMenuBar.app"
+        info "Or search 'ClaudeTraceMenuBar' in Spotlight"
+    else
+        error "Failed to copy to /Applications (may need sudo)"
+        echo "  Try: sudo cp -R '$app_source' '$app_dest'"
+        exit 1
+    fi
 }
 
 # Run the menu bar app
@@ -337,6 +378,9 @@ main() {
         build-all)
             check_prereqs
             build_all
+            ;;
+        install)
+            install_app
             ;;
         run-app)
             run_app
