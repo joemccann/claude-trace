@@ -151,8 +151,8 @@ build_all() {
 install_app() {
     check_xcode
     local archive_path="$PROJECT_DIR/build/ClaudeTraceMenuBar.xcarchive"
-    local app_source="$archive_path/Products/Applications/ClaudeTraceMenuBar.app"
-    local app_dest="/Applications/ClaudeTraceMenuBar.app"
+    local app_source="$archive_path/Products/Applications/Claude Trace.app"
+    local app_dest="/Applications/Claude Trace.app"
 
     info "Building release archive..."
     mkdir -p "$PROJECT_DIR/build"
@@ -176,8 +176,8 @@ install_app() {
     if cp -R "$app_source" "$app_dest"; then
         success "Installed: $app_dest"
         echo ""
-        info "To launch: open /Applications/ClaudeTraceMenuBar.app"
-        info "Or search 'ClaudeTraceMenuBar' in Spotlight"
+        info "To launch: open '/Applications/Claude Trace.app'"
+        info "Or search 'Claude Trace' in Spotlight"
     else
         error "Failed to copy to /Applications (may need sudo)"
         echo "  Try: sudo cp -R '$app_source' '$app_dest'"
@@ -201,13 +201,13 @@ run_app() {
         -configuration Debug \
         build 2>&1 | tail -3
 
-    local app_path="$derived_data/ClaudeTraceMenuBar.app"
+    local app_path="$derived_data/Claude Trace.app"
     if [[ -d "$app_path" ]]; then
         success "Launching menu bar app..."
         open "$app_path"
     else
         # Fallback to finding it
-        app_path=$(find ~/Library/Developer/Xcode/DerivedData -name "ClaudeTraceMenuBar.app" -type d 2>/dev/null | head -1)
+        app_path=$(find ~/Library/Developer/Xcode/DerivedData -name "Claude Trace.app" -type d 2>/dev/null | head -1)
         if [[ -d "$app_path" ]]; then
             success "Launching menu bar app..."
             open "$app_path"
@@ -250,16 +250,16 @@ show_status() {
     echo ""
     if [[ -d "$APP_PROJECT" ]]; then
         local app_path
-        app_path=$(find ~/Library/Developer/Xcode/DerivedData -name "ClaudeTraceMenuBar.app" -type d 2>/dev/null | head -1)
+        app_path=$(find ~/Library/Developer/Xcode/DerivedData -name "Claude Trace.app" -type d 2>/dev/null | head -1)
         if [[ -d "$app_path" ]]; then
-            success "ClaudeTraceMenuBar (Swift): Built"
+            success "Claude Trace (Swift): Built"
             echo -e "  ${DIM}$app_path${RESET}"
         else
-            warn "ClaudeTraceMenuBar (Swift): Not built"
+            warn "Claude Trace (Swift): Not built"
             echo -e "  ${DIM}Run: ./dev.sh build-app${RESET}"
         fi
     else
-        warn "ClaudeTraceMenuBar (Swift): Project not found"
+        warn "Claude Trace (Swift): Project not found"
     fi
 
     echo ""
