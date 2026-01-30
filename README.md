@@ -102,6 +102,9 @@ claude-trace -t
 
 # Warn when CPU exceeds threshold
 claude-trace -k 50
+
+# Warn when RSS memory exceeds threshold (in MB)
+claude-trace -m 512
 ```
 
 **Output Fields:**
@@ -109,9 +112,9 @@ claude-trace -k 50
 |-------|-------------|
 | PID | Process ID |
 | PPID | Parent Process ID |
-| CPU% | CPU utilization percentage |
+| CPU% | CPU utilization percentage (color-coded: red ≥80%, yellow ≥50%, cyan ≥20%) |
 | MEM% | Memory utilization percentage |
-| RSS | Resident Set Size (physical memory) |
+| RSS | Resident Set Size (color-coded: red ≥1GB, yellow ≥512MB, cyan ≥256MB) |
 | STATE | Process state (R=running, S=sleeping, S+=foreground) |
 | TIME | Cumulative CPU time |
 | COMMAND | Process command/arguments |
