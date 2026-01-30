@@ -111,10 +111,12 @@ final class NotificationService: NSObject {
         guard !isThrottled(type: type) else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = title
+        content.title = "Claude Trace"
+        content.subtitle = title
         content.body = body
         content.sound = .default
         content.categoryIdentifier = type.categoryIdentifier
+        content.interruptionLevel = .timeSensitive
 
         // Add process info to userInfo for click handling
         content.userInfo = ["notificationType": type.identifier]
