@@ -1,9 +1,26 @@
+# Claude Code local config
+.claude/
+
 # Rust build artifacts
+cli/target/
 /target/
 debug/
 *.rlib
 *.rmeta
 *.d
+
+# Swift/Xcode build artifacts
+apps/ClaudeTraceMenuBar/build/
+apps/ClaudeTraceMenuBar/DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.playground/
+*.app
+*.ipa
+*.dSYM.zip
+*.dSYM
 
 # IDE and editors
 .idea/

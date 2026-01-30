@@ -10,7 +10,8 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-cli:
+    name: Build CLI Tools
     runs-on: macos-latest
 
     steps:
@@ -26,25 +27,51 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+            cli/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('cli/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
       - name: Build
+        working-directory: cli
         run: cargo build --release
 
       - name: Run tests
+        working-directory: cli
         run: cargo test --verbose
 
       - name: Check formatting
+        working-directory: cli
         run: cargo fmt --check
 
       - name: Run clippy
+        working-directory: cli
         run: cargo clippy -- -D warnings
 
       - name: Verify CLI help
-        run: ./target/release/claude-diagnose --help
+        run: ./cli/target/release/claude-diagnose --help
 
       - name: Verify Bash script syntax
-        run: bash -n claude-trace
+        run: bash -n cli/claude-trace
+
+      - name: Verify Bash script help
+        run: ./cli/claude-trace --help
+
+  build-app:
+    name: Build Menu Bar App
+    runs-on: macos-14  # macOS 14 Sonoma for @Observable support
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+      - name: Build menu bar app
+        run: |
+          xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj \
+            -scheme ClaudeTraceMenuBar \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            build

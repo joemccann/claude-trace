@@ -10,6 +10,7 @@
   <a href="#installation">Install</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#tools">Tools</a> •
+  <a href="#menu-bar-app">Menu Bar App</a> •
   <a href="#diagnostic-workflow">Workflow</a>
 </p>
 
@@ -17,24 +18,24 @@
 
 Stop guessing why Claude Code is eating your CPU. **Claude Trace** gives you instant visibility into every Claude process running on your machine — CPU spikes, memory leaks, runaway file watchers, the works.
 
-Built with **Bash + Rust** for zero-dependency monitoring that's as fast as the problems it finds.
+Built with **Bash + Rust + Swift** for zero-dependency monitoring that's as fast as the problems it finds.
 
 ## Quick Start
 
 ```bash
 # See all Claude processes right now
-./claude-trace
+./cli/claude-trace
 
 # Watch mode — refreshes every 2 seconds
-./claude-trace -w
+./cli/claude-trace -w
 
 # Something's wrong? Go deep.
-./claude-diagnose --pid <PID> -d -s
+./cli/target/release/claude-diagnose --pid <PID> -d -s
 ```
 
 ### See Everything at a Glance
 
-Run `./claude-trace -v` to get a full picture of every Claude session on your machine — which projects they're in, how much CPU and memory they're consuming, and how long they've been running.
+Run `./cli/claude-trace -v` to get a full picture of every Claude session on your machine — which projects they're in, how much CPU and memory they're consuming, and how long they've been running.
 
 <p align="center">
   <img src="assets/trace-1.png" alt="Claude Trace Output" width="900" />
@@ -50,27 +51,47 @@ git clone https://github.com/joemccann/claude-trace.git ~/claude-trace
 cd ~/claude-trace
 
 # Build the Rust diagnostic tool
-cargo build --release
+cd cli && cargo build --release && cd ..
 
 # Add to PATH
-export PATH="$HOME/claude-trace:$HOME/claude-trace/target/release:$PATH"
+export PATH="$HOME/claude-trace/cli:$HOME/claude-trace/cli/target/release:$PATH"
 
-# Or install the binary system-wide
-sudo cp target/release/claude-diagnose /usr/local/bin/
-sudo cp claude-trace /usr/local/bin/
+# Or install the binaries system-wide
+sudo cp cli/target/release/claude-diagnose /usr/local/bin/
+sudo cp cli/claude-trace /usr/local/bin/
+```
+
+## Project Structure
+
+```
+claude-trace/
+├── cli/                          # Command-line tools
+│   ├── claude-trace              # Bash script - real-time monitor
+│   ├── src/main.rs               # Rust binary source
+│   ├── Cargo.toml                # Rust dependencies
+│   └── target/release/
+│       └── claude-diagnose       # Compiled Rust binary
+├── apps/
+│   └── ClaudeTraceMenuBar/       # macOS SwiftUI menu bar app
+├── dev.sh                        # Development convenience script
+├── README.md
+└── CLAUDE.md                     # Project instructions for Claude Code
 ```
 
 ## Development
 
-A convenience script is provided for building and running the tools locally:
+A convenience script is provided for building and running all tools:
 
 ```bash
-./dev.sh              # Build all and show status
+./dev.sh              # Build CLI tools and show status
 ./dev.sh build        # Build Rust binary only
+./dev.sh build-app    # Build the menu bar app (requires Xcode)
+./dev.sh build-all    # Build everything
 ./dev.sh trace        # Run the Bash monitor (claude-trace)
 ./dev.sh trace -v     # Run with verbose output
 ./dev.sh diagnose     # Run the Rust diagnostics (claude-diagnose)
 ./dev.sh watch 5      # Watch mode with 5s refresh
+./dev.sh run-app      # Build and launch the menu bar app
 ./dev.sh test         # Run tests and validate scripts
 ./dev.sh clean        # Clean build artifacts
 ```
@@ -83,28 +104,28 @@ Fast, lightweight Bash script for real-time process monitoring.
 
 ```bash
 # One-shot process list
-claude-trace
+./cli/claude-trace
 
 # Watch mode (refresh every 2s)
-claude-trace -w
+./cli/claude-trace -w
 
 # Watch with 5s interval
-claude-trace -w 5
+./cli/claude-trace -w 5
 
 # JSON output for scripting
-claude-trace -j | jq '.totals.cpu_percent'
+./cli/claude-trace -j | jq '.totals.cpu_percent'
 
 # Verbose mode with threads, project, and working directory
-claude-trace -v
+./cli/claude-trace -v
 
 # Show process tree
-claude-trace -t
+./cli/claude-trace -t
 
 # Warn when CPU exceeds threshold
-claude-trace -k 50
+./cli/claude-trace -k 50
 
 # Warn when RSS memory exceeds threshold (in MB)
-claude-trace -m 512
+./cli/claude-trace -m 512
 ```
 
 **Output Fields:**
@@ -132,22 +153,22 @@ High-performance Rust binary for in-depth analysis including stack sampling and 
 
 ```bash
 # Quick overview
-claude-diagnose
+./cli/target/release/claude-diagnose
 
 # Deep analysis with file descriptor inspection
-claude-diagnose -d
+./cli/target/release/claude-diagnose -d
 
 # Deep analysis with stack sampling (5s default)
-claude-diagnose -d -s
+./cli/target/release/claude-diagnose -d -s
 
 # 10-second sample with JSON output
-claude-diagnose -d -s --sample-duration 10 -j
+./cli/target/release/claude-diagnose -d -s --sample-duration 10 -j
 
 # Analyze specific PID
-claude-diagnose --pid 35072 -d -s
+./cli/target/release/claude-diagnose --pid 35072 -d -s
 
 # Full help
-claude-diagnose --help
+./cli/target/release/claude-diagnose --help
 ```
 
 **Diagnostic Capabilities:**
@@ -168,16 +189,16 @@ Enable system call tracing for deep analysis of process behavior:
 
 ```bash
 # Basic syscall trace (requires sudo)
-sudo claude-diagnose -D --pid 35072
+sudo ./cli/target/release/claude-diagnose -D --pid 35072
 
 # 10-second trace with JSON output
-sudo claude-diagnose -D --duration 10 --pid 35072 -j
+sudo ./cli/target/release/claude-diagnose -D --duration 10 --pid 35072 -j
 
 # I/O focused trace (read, write, open, close, stat)
-sudo claude-diagnose -D --io --pid 35072
+sudo ./cli/target/release/claude-diagnose -D --io --pid 35072
 
 # Network focused trace (socket, connect, send, recv)
-sudo claude-diagnose -D --network --pid 35072
+sudo ./cli/target/release/claude-diagnose -D --network --pid 35072
 ```
 
 **Flamegraph Generation:**
@@ -186,16 +207,16 @@ Generate interactive SVG visualizations of syscall activity:
 
 ```bash
 # Basic flamegraph (5s default duration)
-sudo claude-diagnose -D --flamegraph --pid 35072 -o syscalls.svg
+sudo ./cli/target/release/claude-diagnose -D --flamegraph --pid 35072 -o syscalls.svg
 
 # I/O focused flamegraph
-sudo claude-diagnose -D --io --flamegraph --pid 35072 -o io.svg
+sudo ./cli/target/release/claude-diagnose -D --io --flamegraph --pid 35072 -o io.svg
 
 # Network focused flamegraph
-sudo claude-diagnose -D --network --flamegraph --pid 35072 -o network.svg
+sudo ./cli/target/release/claude-diagnose -D --network --flamegraph --pid 35072 -o network.svg
 
 # Longer trace (10s) for more comprehensive data
-sudo claude-diagnose -D --flamegraph --duration 10 --pid 35072 -o syscalls.svg
+sudo ./cli/target/release/claude-diagnose -D --flamegraph --duration 10 --pid 35072 -o syscalls.svg
 
 # Open the generated flamegraph
 open syscalls.svg
@@ -226,6 +247,48 @@ On macOS with System Integrity Protection (SIP) enabled, DTrace may be restricte
 
 To enable full DTrace support, you can disable SIP (not recommended for production) or use `csrutil enable --without dtrace` in recovery mode.
 
+## Menu Bar App
+
+A native macOS menu bar application for always-on monitoring with desktop notifications.
+
+### Features
+
+- **Real-time monitoring** - Polls claude-trace for process data at configurable intervals
+- **Menu bar presence** - Always visible CPU/memory summary in your menu bar
+- **Native notifications** - Get alerted when thresholds are exceeded
+- **Configurable thresholds** - Set aggregate and per-process CPU/memory limits
+- **Launch at Login** - Start monitoring automatically
+- **No Dock icon** - Runs quietly in the background
+
+### Requirements
+
+- macOS 14.0 (Sonoma) or later
+- Xcode 15.0+ (for building)
+
+### Building the Menu Bar App
+
+```bash
+# Using the dev script
+./dev.sh build-app
+
+# Or using xcodebuild directly
+xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj -scheme ClaudeTraceMenuBar -configuration Release build
+
+# Run after building
+./dev.sh run-app
+```
+
+### Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| Polling Interval | 2 sec | How often to refresh process data |
+| Aggregate CPU Threshold | 100% | Notify when total CPU exceeds this |
+| Aggregate Memory Threshold | 2048 MB | Notify when total RSS exceeds this |
+| Per-Process CPU Threshold | 80% | Notify when any process exceeds this |
+| Per-Process Memory Threshold | 1024 MB | Notify when any process exceeds this |
+| Notification Throttle | 60 sec | Minimum time between same notification type |
+
 ## Common CPU Spinning Causes
 
 ### 1. FSEvents Watcher Storm
@@ -252,28 +315,28 @@ To enable full DTrace support, you can disable SIP (not recommended for producti
 
 ```bash
 # 1. Quick scan
-claude-trace
+./cli/claude-trace
 
 # 2. Identify high-CPU PID (e.g., 35072)
 
 # 3. Deep sample with stack profiling
-claude-diagnose --pid 35072 -d -s --sample-duration 10
+./cli/target/release/claude-diagnose --pid 35072 -d -s --sample-duration 10
 
 # 4. If still unclear, trace syscalls
-sudo claude-diagnose --pid 35072 -D --duration 10
+sudo ./cli/target/release/claude-diagnose --pid 35072 -D --duration 10
 
 # 5. For I/O bottlenecks, focus on file operations
-sudo claude-diagnose --pid 35072 -D --io --duration 10
+sudo ./cli/target/release/claude-diagnose --pid 35072 -D --io --duration 10
 
 # 6. Generate flamegraph for visualization
-sudo claude-diagnose --pid 35072 -D --flamegraph -o debug.svg
+sudo ./cli/target/release/claude-diagnose --pid 35072 -D --flamegraph -o debug.svg
 
 # 7. Check raw sample for details
 sample 35072 10 -file /tmp/claude.txt
 filtercalltree /tmp/claude.txt
 
 # 8. Monitor for recurrence
-claude-trace -w 5 -k 50
+./cli/claude-trace -w 5 -k 50
 ```
 
 ## Auto-Throttle Script
@@ -286,9 +349,10 @@ For automated monitoring and throttling:
 
 THRESHOLD=80
 INTERVAL=30
+TRACE_PATH="./cli/claude-trace"
 
 while true; do
-    claude-trace -j | jq -r '.processes[] | select(.cpu_percent > '$THRESHOLD') | .pid' | \
+    "$TRACE_PATH" -j | jq -r '.processes[] | select(.cpu_percent > '$THRESHOLD') | .pid' | \
     while read pid; do
         echo "[$(date)] Warning: PID $pid exceeds ${THRESHOLD}% CPU"
         # Optional: renice or kill
@@ -305,12 +369,18 @@ done
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Option 1: Use the dev script
-./dev.sh build
+./dev.sh build        # CLI tools only
+./dev.sh build-all    # CLI + menu bar app
 
 # Option 2: Build directly with cargo
-cargo build --release
+cd cli && cargo build --release
 
-# Binary is at: target/release/claude-diagnose
+# Option 3: Build menu bar app with xcodebuild
+xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj -scheme ClaudeTraceMenuBar -configuration Release build
+
+# Binaries are at:
+# - cli/target/release/claude-diagnose
+# - ~/Library/Developer/Xcode/DerivedData/ClaudeTraceMenuBar-*/Build/Products/Release/ClaudeTraceMenuBar.app
 ```
 
 ## Requirements
@@ -318,6 +388,7 @@ cargo build --release
 - macOS Darwin (tested on 24.6.0)
 - Bash 4.0+ (for `claude-trace`)
 - Rust 1.70+ (for building `claude-diagnose`)
+- Xcode 15.0+ and macOS 14.0+ (for menu bar app)
 - Standard macOS tools: `ps`, `lsof`, `sample`, `vm_stat`
 - For DTrace features: `dtruss`, `dtrace`, `fs_usage` (requires sudo)
 - Optional: SIP disabled or configured for DTrace (for full tracing)
