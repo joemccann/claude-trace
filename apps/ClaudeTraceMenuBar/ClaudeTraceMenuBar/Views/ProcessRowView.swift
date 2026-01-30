@@ -47,8 +47,13 @@ struct ProcessRowView: View {
                     .frame(width: 50, alignment: .trailing)
             }
             .contentShape(Rectangle())
-            .onTapGesture {
-                isExpanded.toggle()
+            .onTapGesture(count: 2) {
+                ProcessDetailWindowController.shared.showWindow(for: process)
+            }
+            .onTapGesture(count: 1) {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isExpanded.toggle()
+                }
             }
 
             // Expanded details
