@@ -95,7 +95,8 @@ struct MenuBarView: View {
                     ProcessRowView(
                         process: process,
                         cpuThreshold: monitor.perProcessCpuThreshold,
-                        memoryThresholdMB: monitor.perProcessMemThresholdMB
+                        memoryThresholdMB: monitor.perProcessMemThresholdMB,
+                        isHighlighted: monitor.highlightedPid == process.pid
                     )
                 }
             }

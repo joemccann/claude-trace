@@ -119,7 +119,16 @@ final class NotificationService: NSObject {
         content.interruptionLevel = .timeSensitive
 
         // Add process info to userInfo for click handling
-        content.userInfo = ["notificationType": type.identifier]
+        var userInfo: [String: Any] = ["notificationType": type.identifier]
+
+        // Include PID for per-process notifications
+        switch type {
+        case .highProcessCPU(let pid), .highProcessMemory(let pid):
+            userInfo["pid"] = pid
+        default:
+            break
+        }
+        content.userInfo = userInfo
 
         let request = UNNotificationRequest(
             identifier: type.identifier + "_\(Date().timeIntervalSince1970)",
@@ -174,8 +183,14 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         switch actionIdentifier {
         case "VIEW_DETAILS", UNNotificationDefaultActionIdentifier:
             // User clicked the notification or View Details
-            // Post notification to open menu bar popover
-            NotificationCenter.default.post(name: .openMenuBarPopover, object: nil)
+            // Extract PID if present and post notification to open menu bar popover
+            let userInfo = response.notification.request.content.userInfo
+            let pid = userInfo["pid"] as? Int
+            NotificationCenter.default.post(
+                name: .openMenuBarPopover,
+                object: nil,
+                userInfo: pid != nil ? ["pid": pid!] : nil
+            )
 
         case "DISMISS", UNNotificationDismissActionIdentifier:
             // User dismissed the notification

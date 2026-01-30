@@ -13,21 +13,27 @@ struct ClaudeTraceMenuBarApp: App {
             }
         }
 
-        // Listen for notification actions
-        NotificationCenter.default.addObserver(
-            forName: .openMenuBarPopover,
-            object: nil,
-            queue: .main
-        ) { _ in
-            // The MenuBarExtra will handle showing its content
-            // This is primarily for future extensibility
-        }
+        // Listen for notification actions - handled in onReceive in body
     }
 
     var body: some Scene {
         // Menu bar item
         MenuBarExtra {
             MenuBarView(monitor: monitor)
+                .onReceive(NotificationCenter.default.publisher(for: .openMenuBarPopover)) { notification in
+                    // Set highlighted PID from notification
+                    if let userInfo = notification.userInfo,
+                       let pid = userInfo["pid"] as? Int {
+                        monitor.highlightedPid = pid
+
+                        // Clear highlight after 5 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                            if monitor.highlightedPid == pid {
+                                monitor.highlightedPid = nil
+                            }
+                        }
+                    }
+                }
         } label: {
             menuBarLabel
         }

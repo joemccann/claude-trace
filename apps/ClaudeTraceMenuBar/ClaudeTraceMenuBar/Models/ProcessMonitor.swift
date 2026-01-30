@@ -108,6 +108,9 @@ final class ProcessMonitor {
     var isRunning = false
     var errorMessage: String?
 
+    // Highlighted process (from notification click)
+    var highlightedPid: Int?
+
     // Stable process order - preserves order to prevent UI jumping
     // PIDs are added in order of first appearance, removed when process exits
     private var stableProcessOrder: [Int] = []

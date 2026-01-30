@@ -4,6 +4,7 @@ struct ProcessRowView: View {
     let process: ProcessInfo
     let cpuThreshold: Double
     let memoryThresholdMB: Int
+    let isHighlighted: Bool
     @State private var isExpanded = false
 
     var body: some View {
@@ -61,8 +62,13 @@ struct ProcessRowView: View {
         .padding(.horizontal, 4)
         .background(
             RoundedRectangle(cornerRadius: 4)
-                .fill(isExpanded ? Color.secondary.opacity(0.1) : Color.clear)
+                .fill(highlightColor)
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(isHighlighted ? Color.orange : Color.clear, lineWidth: 2)
+        )
+        .animation(.easeInOut(duration: 0.3), value: isHighlighted)
     }
 
     // MARK: - Expanded Details
@@ -134,6 +140,13 @@ struct ProcessRowView: View {
         }
     }
 
+    private var highlightColor: Color {
+        if isHighlighted {
+            return Color.orange.opacity(0.2)
+        }
+        return isExpanded ? Color.secondary.opacity(0.1) : Color.clear
+    }
+
     private var cpuColor: Color {
         // Use configured threshold for warning color
         if process.cpuPercent >= cpuThreshold { return .red }
@@ -171,7 +184,8 @@ struct ProcessRowView: View {
                 project: "my-project"
             ),
             cpuThreshold: 80.0,
-            memoryThresholdMB: 1024
+            memoryThresholdMB: 1024,
+            isHighlighted: true
         )
 
         ProcessRowView(
@@ -191,7 +205,8 @@ struct ProcessRowView: View {
                 project: nil
             ),
             cpuThreshold: 80.0,
-            memoryThresholdMB: 1024
+            memoryThresholdMB: 1024,
+            isHighlighted: false
         )
     }
     .padding()
