@@ -250,6 +250,12 @@ fn run_cmd(cmd: &str, args: &[&str]) -> (bool, String, String) {
 
 /// Find all Claude Code CLI processes
 fn get_claude_pids() -> Vec<ProcessInfo> {
+    get_claude_pids_filtered(None)
+}
+
+/// Find Claude processes, optionally filtering to a specific PID
+/// When target_pid is Some, we skip the Claude pattern check for that PID
+fn get_claude_pids_filtered(target_pid: Option<u32>) -> Vec<ProcessInfo> {
     let mut processes = Vec::new();
 
     let (success, stdout, _) = run_cmd(
@@ -270,39 +276,81 @@ fn get_claude_pids() -> Vec<ProcessInfo> {
             continue;
         }
 
-        if !claude_pattern.is_match(line) {
+        // split_whitespace handles consecutive whitespace correctly
+        // We need first 8 fields, then the rest is the command
+        let parts: Vec<&str> = line.split_whitespace().collect();
+
+        if parts.len() < 9 {
             continue;
         }
 
-        if exclude_pattern.is_match(line) {
-            continue;
-        }
+        // The command (field 9+) may contain spaces, so rejoin everything after field 8
+        let command = if parts.len() > 9 {
+            // Find where field 9 starts in the original line
+            // by finding the position after field 8
+            let mut pos = 0;
+            let mut field_count = 0;
+            let line_bytes = line.as_bytes();
+            let mut in_whitespace = true;
 
-        let parts: Vec<&str> = line.splitn(9, char::is_whitespace)
-            .filter(|s| !s.is_empty())
-            .collect();
-
-        if parts.len() >= 9 {
-            if let (Ok(pid), Ok(ppid), Ok(cpu), Ok(mem), Ok(rss), Ok(vsz)) = (
-                parts[0].parse::<u32>(),
-                parts[1].parse::<u32>(),
-                parts[2].parse::<f64>(),
-                parts[3].parse::<f64>(),
-                parts[4].parse::<u64>(),
-                parts[5].parse::<u64>(),
-            ) {
-                processes.push(ProcessInfo {
-                    pid,
-                    ppid,
-                    cpu,
-                    mem,
-                    rss_kb: rss,
-                    vsz_kb: vsz,
-                    state: parts[6].to_string(),
-                    etime: parts[7].to_string(),
-                    command: parts[8].to_string(),
-                });
+            for (i, &b) in line_bytes.iter().enumerate() {
+                let is_ws = b == b' ' || b == b'\t';
+                if in_whitespace && !is_ws {
+                    field_count += 1;
+                    if field_count == 9 {
+                        pos = i;
+                        break;
+                    }
+                }
+                in_whitespace = is_ws;
             }
+
+            if pos > 0 {
+                &line[pos..]
+            } else {
+                parts[8]
+            }
+        } else {
+            parts[8]
+        };
+
+        let pid = match parts[0].parse::<u32>() {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        // If we're looking for a specific PID, check if this is it
+        let is_target_pid = target_pid.map(|t| t == pid).unwrap_or(false);
+
+        // For the target PID, we trust the user knows it's a Claude process
+        // For discovery mode, apply the Claude pattern filter
+        if !is_target_pid {
+            if !claude_pattern.is_match(line) {
+                continue;
+            }
+            if exclude_pattern.is_match(line) {
+                continue;
+            }
+        }
+
+        if let (Ok(ppid), Ok(cpu), Ok(mem), Ok(rss), Ok(vsz)) = (
+            parts[1].parse::<u32>(),
+            parts[2].parse::<f64>(),
+            parts[3].parse::<f64>(),
+            parts[4].parse::<u64>(),
+            parts[5].parse::<u64>(),
+        ) {
+            processes.push(ProcessInfo {
+                pid,
+                ppid,
+                cpu,
+                mem,
+                rss_kb: rss,
+                vsz_kb: vsz,
+                state: parts[6].to_string(),
+                etime: parts[7].to_string(),
+                command: command.to_string(),
+            });
         }
     }
 
@@ -1425,17 +1473,18 @@ fn main() -> Result<()> {
         args.deep = true;
     }
 
-    // Find processes
-    let mut processes = get_claude_pids();
-
-    // Filter to specific PID if requested
-    if let Some(pid) = args.pid {
-        processes.retain(|p| p.pid == pid);
-        if processes.is_empty() {
-            eprintln!("{}: PID {} not found or not a Claude process", "Error".red(), pid);
+    // Find processes - when a specific PID is provided, trust the user
+    let processes = if let Some(pid) = args.pid {
+        let procs = get_claude_pids_filtered(Some(pid));
+        let filtered: Vec<_> = procs.into_iter().filter(|p| p.pid == pid).collect();
+        if filtered.is_empty() {
+            eprintln!("{}: PID {} not found (process may have exited)", "Error".red(), pid);
             std::process::exit(1);
         }
-    }
+        filtered
+    } else {
+        get_claude_pids()
+    };
 
     if processes.is_empty() {
         if args.json {
