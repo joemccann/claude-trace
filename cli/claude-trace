@@ -157,7 +157,10 @@ get_claude_pids() {
             awk '{print $2}')
     fi
 
-    printf '%s\n' "${pids[@]}"
+    # Only print if array is non-empty (avoids "unbound variable" with set -u)
+    if [[ ${#pids[@]} -gt 0 ]]; then
+        printf '%s\n' "${pids[@]}"
+    fi
 }
 
 # Get detailed process info for a PID
@@ -282,8 +285,10 @@ PROC
     done < <(get_claude_pids)
 
     # Build final JSON
-    local procs_array
-    procs_array=$(IFS=,; echo "${processes[*]}")
+    local procs_array=""
+    if [[ ${#processes[@]} -gt 0 ]]; then
+        procs_array=$(IFS=,; echo "${processes[*]}")
+    fi
 
     cat << JSON
 {
