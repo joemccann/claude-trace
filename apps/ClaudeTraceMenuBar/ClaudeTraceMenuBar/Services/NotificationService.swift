@@ -208,13 +208,19 @@ extension NotificationService: UNUserNotificationCenterDelegate {
         switch actionIdentifier {
         case "VIEW_DETAILS", UNNotificationDefaultActionIdentifier:
             // User clicked the notification or View Details
-            // Extract PID if present and post notification to open menu bar popover
+            // Pass all userInfo from the notification to the popover handler
             let userInfo = response.notification.request.content.userInfo
-            let pid = userInfo["pid"] as? Int
+            // Convert [AnyHashable: Any] to [String: Any] for NotificationCenter
+            var info: [String: Any] = [:]
+            for (key, value) in userInfo {
+                if let stringKey = key as? String {
+                    info[stringKey] = value
+                }
+            }
             NotificationCenter.default.post(
                 name: .openMenuBarPopover,
                 object: nil,
-                userInfo: pid != nil ? ["pid": pid!] : nil
+                userInfo: info.isEmpty ? nil : info
             )
 
         case "DISMISS", UNNotificationDismissActionIdentifier:
