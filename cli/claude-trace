@@ -9,6 +9,7 @@
 #   -v, --verbose            Include additional process details
 #   -t, --tree               Show process tree
 #   -k, --kill-threshold N   Warn when CPU exceeds N%
+#   --uninstall-app          Remove all Claude Trace menu bar app installations
 #   -h, --help               Show this help message
 #
 
@@ -50,6 +51,7 @@ OPTIONS:
     -t, --tree                Show process hierarchy tree
     -k, --kill-threshold N    Highlight processes exceeding N% CPU
     -m, --mem-threshold N     Highlight processes exceeding N MB RSS memory
+    --uninstall-app           Remove all Claude Trace menu bar app installations
     -h, --help                Show this help message
 
 EXAMPLES:
@@ -59,6 +61,7 @@ EXAMPLES:
     claude-trace -v -k 50           # Verbose with 50% CPU warning threshold
     claude-trace -m 512             # Warn when RSS exceeds 512MB
     claude-trace -t                 # Show process tree
+    claude-trace --uninstall-app    # Remove menu bar app installations
 
 OUTPUT FIELDS:
     PID      Process ID
@@ -73,6 +76,56 @@ OUTPUT FIELDS:
     CWD      Current working directory (with -v/--verbose)
     PROJECT  Project name derived from CWD (with -v/--verbose)
 EOF
+}
+
+# Uninstall all Claude Trace menu bar app installations
+uninstall_app() {
+    echo -e "${BOLD}Uninstalling Claude Trace Menu Bar App...${RESET}\n"
+
+    local removed=0
+
+    # Kill running instances
+    if pgrep -q "Claude Trace"; then
+        echo -e "  ${YELLOW}Stopping running instances...${RESET}"
+        pkill -9 "Claude Trace" 2>/dev/null && echo -e "  ${GREEN}✓${RESET} Killed running processes" || true
+        ((removed++)) || true
+    fi
+
+    # Remove from /Applications
+    if [[ -d "/Applications/Claude Trace.app" ]]; then
+        echo -e "  ${YELLOW}Removing /Applications/Claude Trace.app...${RESET}"
+        rm -rf "/Applications/Claude Trace.app" && echo -e "  ${GREEN}✓${RESET} Removed from /Applications"
+        ((removed++)) || true
+    fi
+
+    # Get script directory to find project root
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_root
+    project_root="$(dirname "$script_dir")"
+
+    # Remove build directory
+    if [[ -d "$project_root/build" ]]; then
+        echo -e "  ${YELLOW}Removing build directory...${RESET}"
+        rm -rf "$project_root/build" && echo -e "  ${GREEN}✓${RESET} Removed $project_root/build"
+        ((removed++)) || true
+    fi
+
+    # Clean Xcode DerivedData
+    local derived_data
+    derived_data=$(find ~/Library/Developer/Xcode/DerivedData -maxdepth 1 -name "ClaudeTraceMenuBar-*" -type d 2>/dev/null || true)
+    if [[ -n "$derived_data" ]]; then
+        echo -e "  ${YELLOW}Cleaning Xcode DerivedData...${RESET}"
+        rm -rf ~/Library/Developer/Xcode/DerivedData/ClaudeTraceMenuBar-* && echo -e "  ${GREEN}✓${RESET} Cleaned DerivedData"
+        ((removed++)) || true
+    fi
+
+    echo ""
+    if [[ $removed -eq 0 ]]; then
+        echo -e "${DIM}No Claude Trace installations found.${RESET}"
+    else
+        echo -e "${GREEN}Done.${RESET} Removed $removed item(s)."
+    fi
 }
 
 # Parse arguments
@@ -105,6 +158,10 @@ while [[ $# -gt 0 ]]; do
         -m|--mem-threshold)
             MEM_THRESHOLD=${2:-512}
             shift 2
+            ;;
+        --uninstall-app)
+            uninstall_app
+            exit 0
             ;;
         -h|--help)
             usage

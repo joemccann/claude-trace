@@ -126,6 +126,9 @@ Fast, lightweight Bash script for real-time process monitoring.
 
 # Warn when RSS memory exceeds threshold (in MB)
 ./cli/claude-trace -m 512
+
+# Uninstall all menu bar app installations
+./cli/claude-trace --uninstall-app
 ```
 
 **Output Fields:**

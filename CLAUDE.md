@@ -206,6 +206,7 @@ Additional fields in verbose JSON: `open_files`, `threads`, `cwd`, `project`
 8. **I/O analysis**: `sudo ./cli/target/release/claude-diagnose --pid <PID> -D --io`
 9. **Network analysis**: `sudo ./cli/target/release/claude-diagnose --pid <PID> -D --network`
 10. **Flamegraph**: `sudo ./cli/target/release/claude-diagnose --pid <PID> -D --flamegraph -o trace.svg`
+11. **Uninstall app**: `./cli/claude-trace --uninstall-app` to remove all menu bar app installations
 
 ## Performance Considerations
 
