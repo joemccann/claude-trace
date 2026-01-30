@@ -141,7 +141,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Link("View on GitHub", destination: URL(string: "https://github.com/your-repo/claude-trace")!)
+                Link("View on GitHub", destination: URL(string: "https://github.com/joemccann/claude-trace")!)
             }
         }
         .formStyle(.grouped)
