@@ -1,16 +1,61 @@
 # Rust build artifacts
 /target/
-Cargo.lock
+debug/
+*.rlib
+*.rmeta
+*.d
 
-# IDE
+# IDE and editors
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+.project
+.classpath
+.settings/
 
 # macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.fuse_hidden*
+.nfs*
+
+# Logs and diagnostics output
+*.log
+*.out
+/logs/
+/output/
+/diagnostics/
 
 # Temporary files
 *.tmp
+*.temp
 /tmp/
+
+# Shell history and local config
+.bash_history
+.zsh_history
+.local/
+
+# Test artifacts
+*.profraw
+*.profdata
+/coverage/
+
+# Environment files (if any)
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+*.orig

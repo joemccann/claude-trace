@@ -95,6 +95,61 @@ claude-diagnose --help
 - Memory pressure analysis
 - V8 GC pressure detection
 - CFRunLoop spin detection
+- **DTrace/dtruss syscall tracing**
+- **Flamegraph generation**
+
+### DTrace Syscall Tracing
+
+Enable system call tracing for deep analysis of process behavior:
+
+```bash
+# Basic syscall trace (requires sudo)
+sudo claude-diagnose --dtrace --pid 35072
+
+# 10-second trace with JSON output
+sudo claude-diagnose -D --duration 10 --pid 35072 -j
+
+# I/O focused trace (read, write, open, close, stat)
+sudo claude-diagnose -D --io --pid 35072
+
+# Network focused trace (socket, connect, send, recv)
+sudo claude-diagnose -D --network --pid 35072
+
+# Generate flamegraph SVG
+sudo claude-diagnose -D --flamegraph --pid 35072 -o syscalls.svg
+```
+
+**DTrace Output Includes:**
+| Field | Description |
+|-------|-------------|
+| Top Syscalls | Most frequently called system calls |
+| Total Time | Cumulative time spent in each syscall |
+| Avg Time | Average latency per syscall |
+| Errors | Failed syscall count |
+| I/O Operations | File read/write activity with paths |
+| Network Operations | Socket operations with addresses |
+
+**Flamegraph Generation:**
+
+The `--flamegraph` option generates an interactive SVG visualization:
+- Syscalls grouped by category (file, network, memory, process, event)
+- Width represents call frequency
+- Useful for identifying syscall hotspots
+
+```bash
+# Generate and open flamegraph
+sudo claude-diagnose -D --flamegraph --pid 35072 -o trace.svg
+open trace.svg
+```
+
+**SIP Considerations:**
+
+On macOS with System Integrity Protection (SIP) enabled, DTrace may be restricted. The tool will:
+1. Detect SIP restrictions automatically
+2. Fall back to `fs_usage` for limited file system tracing
+3. Report the fallback reason in output
+
+To enable full DTrace support, you can disable SIP (not recommended for production) or use `csrutil enable --without dtrace` in recovery mode.
 
 ## Common CPU Spinning Causes
 
@@ -126,14 +181,23 @@ claude-trace
 
 # 2. Identify high-CPU PID (e.g., 35072)
 
-# 3. Deep sample
+# 3. Deep sample with stack profiling
 claude-diagnose --pid 35072 -d -s --sample-duration 10
 
-# 4. Check raw sample for details
+# 4. If still unclear, trace syscalls
+sudo claude-diagnose --pid 35072 -D --duration 10
+
+# 5. For I/O bottlenecks, focus on file operations
+sudo claude-diagnose --pid 35072 -D --io --duration 10
+
+# 6. Generate flamegraph for visualization
+sudo claude-diagnose --pid 35072 -D --flamegraph -o debug.svg
+
+# 7. Check raw sample for details
 sample 35072 10 -file /tmp/claude.txt
 filtercalltree /tmp/claude.txt
 
-# 5. Monitor for recurrence
+# 8. Monitor for recurrence
 claude-trace -w 5 -k 50
 ```
 
@@ -177,6 +241,8 @@ cargo build --release
 - Bash 4.0+ (for `claude-trace`)
 - Rust 1.70+ (for building `claude-diagnose`)
 - Standard macOS tools: `ps`, `lsof`, `sample`, `vm_stat`
+- For DTrace features: `dtruss`, `dtrace`, `fs_usage` (requires sudo)
+- Optional: SIP disabled or configured for DTrace (for full tracing)
 
 ## License
 
