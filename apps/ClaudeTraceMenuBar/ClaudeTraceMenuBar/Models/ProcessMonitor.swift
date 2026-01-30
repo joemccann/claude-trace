@@ -108,6 +108,10 @@ final class ProcessMonitor {
     var isRunning = false
     var errorMessage: String?
 
+    // Stable process order - preserves order to prevent UI jumping
+    // PIDs are added in order of first appearance, removed when process exits
+    private var stableProcessOrder: [Int] = []
+
     // Settings (persisted via @AppStorage in views)
     var pollingInterval: TimeInterval = 2.0
     var cpuThreshold: Double = 100.0        // Aggregate CPU threshold
@@ -211,6 +215,22 @@ final class ProcessMonitor {
             let decoder = JSONDecoder()
             let traceOutput = try decoder.decode(TraceOutput.self, from: output)
 
+            // Update stable order - preserve existing order, append new PIDs, remove dead ones
+            let newPids = Set(traceOutput.processes.map { $0.pid })
+            let existingPids = Set(stableProcessOrder)
+
+            // Remove PIDs that no longer exist
+            stableProcessOrder.removeAll { !newPids.contains($0) }
+
+            // Append new PIDs (sorted by CPU for initial placement)
+            let addedPids = newPids.subtracting(existingPids)
+            if !addedPids.isEmpty {
+                let newProcesses = traceOutput.processes
+                    .filter { addedPids.contains($0.pid) }
+                    .sorted { $0.cpuPercent > $1.cpuPercent }
+                stableProcessOrder.append(contentsOf: newProcesses.map { $0.pid })
+            }
+
             // Update state
             self.processes = traceOutput.processes
             self.totals = traceOutput.totals
@@ -223,6 +243,12 @@ final class ProcessMonitor {
         } catch {
             self.errorMessage = error.localizedDescription
         }
+    }
+
+    /// Returns processes in stable order (doesn't jump around on updates)
+    var sortedProcesses: [ProcessInfo] {
+        let processMap = Dictionary(uniqueKeysWithValues: processes.map { ($0.pid, $0) })
+        return stableProcessOrder.compactMap { processMap[$0] }
     }
 
     private func runCLI() async throws -> Data {

@@ -90,7 +90,8 @@ struct MenuBarView: View {
     private var processList: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
-                ForEach(monitor.processes.sorted(by: { $0.cpuPercent > $1.cpuPercent })) { process in
+                // Use stable order to prevent UI jumping when data updates
+                ForEach(monitor.sortedProcesses) { process in
                     ProcessRowView(process: process)
                 }
             }
