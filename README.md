@@ -1,14 +1,42 @@
-# claude-trace
+<p align="center">
+  <img src="assets/github-banner.png" alt="Claude Trace" width="900" />
+</p>
 
-CLI tools to identify and diagnose Claude Code CLI process resource usage on macOS.
+<p align="center">
+  <strong>Your Claude Code is slow. Here's why.</strong>
+</p>
 
-**Built with Bash + Rust** for maximum performance and minimal dependencies.
+<p align="center">
+  <a href="#installation">Install</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#tools">Tools</a> •
+  <a href="#diagnostic-workflow">Workflow</a>
+</p>
+
+---
+
+Stop guessing why Claude Code is eating your CPU. **Claude Trace** gives you instant visibility into every Claude process running on your machine — CPU spikes, memory leaks, runaway file watchers, the works.
+
+Built with **Bash + Rust** for zero-dependency monitoring that's as fast as the problems it finds.
+
+## Quick Start
+
+```bash
+# See all Claude processes right now
+./claude-trace
+
+# Watch mode — refreshes every 2 seconds
+./claude-trace -w
+
+# Something's wrong? Go deep.
+./claude-diagnose --pid <PID> -d -s
+```
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone <repo-url> ~/claude-trace
+git clone https://github.com/joemccann/claude-trace.git ~/claude-trace
 cd ~/claude-trace
 
 # Build the Rust diagnostic tool
