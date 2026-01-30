@@ -404,15 +404,34 @@ fn sample_process(pid: u32, duration: u32) -> SampleResult {
         }
     }
 
-    // Find hot functions
-    let func_pattern = Regex::new(r"\+\[(.*?)\]|(\w+::\w+)\s*\(").unwrap();
+    // Find hot functions from sample output
+    // Format: "    2591 uv__io_poll  (in claude) + 612  [0x100d6e500]"
+    // Module names can contain dots: "libsystem_pthread.dylib"
+    let func_pattern = Regex::new(r"^\s*(\d+)\s+(\w+)\s+\(in\s+([\w.]+)\)").unwrap();
     let mut func_counts: HashMap<String, u32> = HashMap::new();
 
-    for caps in func_pattern.captures_iter(&content) {
-        let func = caps.get(1).or(caps.get(2)).map(|m| m.as_str().to_string());
-        if let Some(f) = func {
-            if f.len() > 3 {
-                *func_counts.entry(f).or_insert(0) += 1;
+    for line in content.lines() {
+        if let Some(caps) = func_pattern.captures(line) {
+            let count: u32 = caps.get(1)
+                .and_then(|m| m.as_str().parse().ok())
+                .unwrap_or(0);
+            let func_name = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+            let module = caps.get(3).map(|m| m.as_str()).unwrap_or("");
+
+            // Skip very short names and common uninteresting functions
+            if func_name.len() > 2 && !["start", "main", "thread_start", "_pthread_start"].contains(&func_name) {
+                let key = if module.starts_with("libsystem_") || module.starts_with("libdyld") {
+                    // For system calls, just use the function name
+                    func_name.to_string()
+                } else {
+                    // For app functions, include the module for context
+                    format!("{} ({})", func_name, module)
+                };
+                // Use the sample count from the trace, taking the max if seen multiple times
+                let entry = func_counts.entry(key).or_insert(0);
+                if count > *entry {
+                    *entry = count;
+                }
             }
         }
     }

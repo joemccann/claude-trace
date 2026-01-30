@@ -127,7 +127,7 @@ Enable system call tracing for deep analysis of process behavior:
 
 ```bash
 # Basic syscall trace (requires sudo)
-sudo claude-diagnose --dtrace --pid 35072
+sudo claude-diagnose -D --pid 35072
 
 # 10-second trace with JSON output
 sudo claude-diagnose -D --duration 10 --pid 35072 -j
@@ -137,9 +137,27 @@ sudo claude-diagnose -D --io --pid 35072
 
 # Network focused trace (socket, connect, send, recv)
 sudo claude-diagnose -D --network --pid 35072
+```
 
-# Generate flamegraph SVG
+**Flamegraph Generation:**
+
+Generate interactive SVG visualizations of syscall activity:
+
+```bash
+# Basic flamegraph (5s default duration)
 sudo claude-diagnose -D --flamegraph --pid 35072 -o syscalls.svg
+
+# I/O focused flamegraph
+sudo claude-diagnose -D --io --flamegraph --pid 35072 -o io.svg
+
+# Network focused flamegraph
+sudo claude-diagnose -D --network --flamegraph --pid 35072 -o network.svg
+
+# Longer trace (10s) for more comprehensive data
+sudo claude-diagnose -D --flamegraph --duration 10 --pid 35072 -o syscalls.svg
+
+# Open the generated flamegraph
+open syscalls.svg
 ```
 
 **DTrace Output Includes:**
@@ -152,18 +170,11 @@ sudo claude-diagnose -D --flamegraph --pid 35072 -o syscalls.svg
 | I/O Operations | File read/write activity with paths |
 | Network Operations | Socket operations with addresses |
 
-**Flamegraph Generation:**
-
-The `--flamegraph` option generates an interactive SVG visualization:
+**Flamegraph Features:**
 - Syscalls grouped by category (file, network, memory, process, event)
 - Width represents call frequency
-- Useful for identifying syscall hotspots
-
-```bash
-# Generate and open flamegraph
-sudo claude-diagnose -D --flamegraph --pid 35072 -o trace.svg
-open trace.svg
-```
+- Interactive SVG - hover for details, click to zoom
+- Also generates `.folded` file for use with external flamegraph tools
 
 **SIP Considerations:**
 
