@@ -1,0 +1,450 @@
+#!/usr/bin/env bash
+#
+# claude-trace - Monitor Claude Code CLI process resource usage on macOS
+# Usage: claude-trace [options]
+#
+# Options:
+#   -w, --watch [interval]   Continuous monitoring (default: 2s)
+#   -j, --json               Output as JSON
+#   -v, --verbose            Include additional process details
+#   -t, --tree               Show process tree
+#   -k, --kill-threshold N   Warn when CPU exceeds N%
+#   -h, --help               Show this help message
+#
+
+set -euo pipefail
+
+# Colors (disabled if not a terminal)
+if [[ -t 1 ]]; then
+    RED='\033[0;31m'
+    YELLOW='\033[1;33m'
+    GREEN='\033[0;32m'
+    CYAN='\033[0;36m'
+    BOLD='\033[1m'
+    DIM='\033[2m'
+    RESET='\033[0m'
+else
+    RED='' YELLOW='' GREEN='' CYAN='' BOLD='' DIM='' RESET=''
+fi
+
+# Defaults
+WATCH_MODE=false
+WATCH_INTERVAL=2
+JSON_OUTPUT=false
+VERBOSE=false
+SHOW_TREE=false
+CPU_THRESHOLD=0
+
+usage() {
+    cat << 'EOF'
+claude-trace - Monitor Claude Code CLI process resource usage
+
+USAGE:
+    claude-trace [OPTIONS]
+
+OPTIONS:
+    -w, --watch [INTERVAL]    Continuous monitoring mode (default: 2s interval)
+    -j, --json                Output in JSON format
+    -v, --verbose             Include file descriptors, threads, and open files
+    -t, --tree                Show process hierarchy tree
+    -k, --kill-threshold N    Highlight processes exceeding N% CPU
+    -h, --help                Show this help message
+
+EXAMPLES:
+    claude-trace                    # One-shot process list
+    claude-trace -w 5               # Watch mode, refresh every 5s
+    claude-trace -j | jq            # JSON output piped to jq
+    claude-trace -v -k 50           # Verbose with 50% CPU warning threshold
+    claude-trace -t                 # Show process tree
+
+OUTPUT FIELDS:
+    PID      Process ID
+    PPID     Parent Process ID
+    CPU%     CPU utilization percentage
+    MEM%     Memory utilization percentage
+    RSS      Resident Set Size (physical memory)
+    VSZ      Virtual memory size
+    STATE    Process state (R=running, S=sleeping, etc.)
+    TIME     Cumulative CPU time
+    COMMAND  Process command/arguments
+EOF
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -w|--watch)
+            WATCH_MODE=true
+            if [[ ${2:-} =~ ^[0-9]+$ ]]; then
+                WATCH_INTERVAL=$2
+                shift
+            fi
+            shift
+            ;;
+        -j|--json)
+            JSON_OUTPUT=true
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        -t|--tree)
+            SHOW_TREE=true
+            shift
+            ;;
+        -k|--kill-threshold)
+            CPU_THRESHOLD=${2:-80}
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+# Detect OS
+detect_os() {
+    case "$(uname -s)" in
+        Darwin*) echo "darwin" ;;
+        Linux*)  echo "linux" ;;
+        *)       echo "unknown" ;;
+    esac
+}
+
+OS_TYPE=$(detect_os)
+
+# Get Claude processes - matches various Claude Code CLI patterns
+get_claude_pids() {
+    local pids=()
+
+    if [[ "$OS_TYPE" == "darwin" ]]; then
+        # macOS: use ps with extended regex
+        # Match: claude, Claude, node.*claude, Electron.*claude
+        while IFS= read -r pid; do
+            [[ -n "$pid" ]] && pids+=("$pid")
+        done < <(ps -Ao pid,command 2>/dev/null | \
+            grep -iE '(claude|anthropic)' | \
+            grep -vE '(grep|claude-trace)' | \
+            awk '{print $1}')
+    else
+        # Linux: use pgrep or ps
+        while IFS= read -r pid; do
+            [[ -n "$pid" ]] && pids+=("$pid")
+        done < <(ps aux 2>/dev/null | \
+            grep -iE '(claude|anthropic)' | \
+            grep -vE '(grep|claude-trace)' | \
+            awk '{print $2}')
+    fi
+
+    printf '%s\n' "${pids[@]}"
+}
+
+# Get detailed process info for a PID
+get_process_info() {
+    local pid=$1
+
+    if [[ "$OS_TYPE" == "darwin" ]]; then
+        # macOS ps format
+        ps -p "$pid" -o pid=,ppid=,pcpu=,pmem=,rss=,vsz=,state=,etime=,command= 2>/dev/null
+    else
+        # Linux ps format
+        ps -p "$pid" -o pid=,ppid=,pcpu=,pmem=,rss=,vsz=,stat=,etime=,args= 2>/dev/null
+    fi
+}
+
+# Get open file count for a PID
+get_open_files() {
+    local pid=$1
+    if command -v lsof &>/dev/null; then
+        lsof -p "$pid" 2>/dev/null | wc -l | tr -d ' '
+    else
+        echo "N/A"
+    fi
+}
+
+# Get thread count for a PID
+get_thread_count() {
+    local pid=$1
+    if [[ "$OS_TYPE" == "darwin" ]]; then
+        ps -M -p "$pid" 2>/dev/null | tail -n +2 | wc -l | tr -d ' '
+    else
+        ls "/proc/$pid/task" 2>/dev/null | wc -l || echo "N/A"
+    fi
+}
+
+# Format bytes to human readable
+format_bytes() {
+    local kb=$1
+    if (( kb >= 1048576 )); then
+        printf "%.1fG" "$(echo "scale=1; $kb/1048576" | bc)"
+    elif (( kb >= 1024 )); then
+        printf "%.1fM" "$(echo "scale=1; $kb/1024" | bc)"
+    else
+        printf "%dK" "$kb"
+    fi
+}
+
+# Build JSON output
+output_json() {
+    local processes=()
+    local total_cpu=0
+    local total_mem=0
+    local total_rss=0
+
+    while IFS= read -r pid; do
+        [[ -z "$pid" ]] && continue
+
+        local info
+        info=$(get_process_info "$pid")
+        [[ -z "$info" ]] && continue
+
+        read -r p_pid p_ppid p_cpu p_mem p_rss p_vsz p_state p_time p_cmd <<< "$info"
+
+        total_cpu=$(echo "$total_cpu + $p_cpu" | bc)
+        total_mem=$(echo "$total_mem + $p_mem" | bc)
+        total_rss=$((total_rss + p_rss))
+
+        local proc_json
+        proc_json=$(cat << PROC
+{
+    "pid": $p_pid,
+    "ppid": $p_ppid,
+    "cpu_percent": $p_cpu,
+    "mem_percent": $p_mem,
+    "rss_kb": $p_rss,
+    "vsz_kb": $p_vsz,
+    "state": "$p_state",
+    "elapsed_time": "$p_time",
+    "command": "$(echo "$p_cmd" | sed 's/"/\\"/g' | head -c 200)"
+PROC
+)
+        if $VERBOSE; then
+            local open_files threads
+            open_files=$(get_open_files "$p_pid")
+            threads=$(get_thread_count "$p_pid")
+            proc_json+=",
+    \"open_files\": $open_files,
+    \"threads\": $threads"
+        fi
+
+        proc_json+="
+}"
+        processes+=("$proc_json")
+    done < <(get_claude_pids)
+
+    # Build final JSON
+    local procs_array
+    procs_array=$(IFS=,; echo "${processes[*]}")
+
+    cat << JSON
+{
+  "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "hostname": "$(hostname)",
+  "os": "$OS_TYPE",
+  "os_version": "$(uname -r)",
+  "process_count": ${#processes[@]},
+  "totals": {
+    "cpu_percent": $total_cpu,
+    "mem_percent": $total_mem,
+    "rss_kb": $total_rss,
+    "rss_human": "$(format_bytes $total_rss)"
+  },
+  "processes": [
+    $procs_array
+  ]
+}
+JSON
+}
+
+# Print table header
+print_header() {
+    if $VERBOSE; then
+        printf "${BOLD}%-7s %-7s %6s %6s %9s %9s %5s %6s %12s %-40s${RESET}\n" \
+            "PID" "PPID" "CPU%" "MEM%" "RSS" "VSZ" "STATE" "THRDS" "TIME" "COMMAND"
+    else
+        printf "${BOLD}%-7s %-7s %6s %6s %9s %5s %12s %-50s${RESET}\n" \
+            "PID" "PPID" "CPU%" "MEM%" "RSS" "STATE" "TIME" "COMMAND"
+    fi
+    printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
+}
+
+# Print process row
+print_row() {
+    local pid=$1 ppid=$2 cpu=$3 mem=$4 rss=$5 vsz=$6 state=$7 time=$8 cmd=$9
+    local threads=${10:-}
+
+    # Color coding based on CPU usage
+    local cpu_color=""
+    local cpu_int=${cpu%.*}
+
+    if (( cpu_int >= 80 )); then
+        cpu_color=$RED
+    elif (( cpu_int >= 50 )); then
+        cpu_color=$YELLOW
+    elif (( cpu_int >= 20 )); then
+        cpu_color=$CYAN
+    fi
+
+    # Threshold warning
+    local warning=""
+    if (( CPU_THRESHOLD > 0 && cpu_int >= CPU_THRESHOLD )); then
+        warning=" ${RED}⚠ EXCEEDS THRESHOLD${RESET}"
+    fi
+
+    local rss_human vsz_human
+    rss_human=$(format_bytes "$rss")
+    vsz_human=$(format_bytes "$vsz")
+
+    # Truncate command
+    local cmd_truncated="${cmd:0:50}"
+    [[ ${#cmd} -gt 50 ]] && cmd_truncated="${cmd_truncated}..."
+
+    if $VERBOSE; then
+        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s %9s %5s %6s %12s %-40s%s\n" \
+            "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$vsz_human" "$state" "$threads" "$time" "$cmd_truncated" "$warning"
+    else
+        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s %5s %12s %-50s%s\n" \
+            "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$time" "$cmd_truncated" "$warning"
+    fi
+}
+
+# Print totals row
+print_totals() {
+    local count=$1 cpu=$2 mem=$3 rss=$4
+
+    printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
+
+    local cpu_color=""
+    local cpu_int=${cpu%.*}
+    if (( cpu_int >= 100 )); then
+        cpu_color=$RED
+    elif (( cpu_int >= 50 )); then
+        cpu_color=$YELLOW
+    fi
+
+    local rss_human
+    rss_human=$(format_bytes "$rss")
+
+    printf "${BOLD}%-7s %-7s ${cpu_color}%6s${RESET} %6s %9s${RESET}\n" \
+        "TOTAL" "($count)" "$cpu%" "$mem%" "$rss_human"
+}
+
+# Show process tree
+show_tree() {
+    echo -e "\n${BOLD}Process Tree:${RESET}"
+    if command -v pstree &>/dev/null; then
+        while IFS= read -r pid; do
+            [[ -z "$pid" ]] && continue
+            echo -e "${CYAN}PID $pid:${RESET}"
+            if [[ "$OS_TYPE" == "darwin" ]]; then
+                pstree -p "$pid" 2>/dev/null || pstree "$pid" 2>/dev/null || echo "  (pstree unavailable)"
+            else
+                pstree -p "$pid" 2>/dev/null || echo "  (pstree unavailable)"
+            fi
+        done < <(get_claude_pids)
+    else
+        echo "  (pstree not installed - brew install pstree)"
+    fi
+}
+
+# Main output function
+output_table() {
+    local pids=()
+    local total_cpu=0
+    local total_mem=0
+    local total_rss=0
+    local count=0
+
+    # Clear screen in watch mode
+    $WATCH_MODE && clear
+
+    # Header
+    echo -e "${BOLD}Claude Code CLI Process Monitor${RESET}"
+    echo -e "${DIM}$(date '+%Y-%m-%d %H:%M:%S') | $(hostname) | $(uname -s) $(uname -r)${RESET}\n"
+
+    # Get all PIDs first
+    while IFS= read -r pid; do
+        [[ -n "$pid" ]] && pids+=("$pid")
+    done < <(get_claude_pids)
+
+    if [[ ${#pids[@]} -eq 0 ]]; then
+        echo -e "${YELLOW}No Claude Code CLI processes found.${RESET}"
+        echo -e "${DIM}Looking for processes matching: claude, anthropic${RESET}"
+        return 0
+    fi
+
+    print_header
+
+    for pid in "${pids[@]}"; do
+        local info
+        info=$(get_process_info "$pid")
+        [[ -z "$info" ]] && continue
+
+        read -r p_pid p_ppid p_cpu p_mem p_rss p_vsz p_state p_time p_cmd <<< "$info"
+
+        local threads=""
+        if $VERBOSE; then
+            threads=$(get_thread_count "$p_pid")
+        fi
+
+        print_row "$p_pid" "$p_ppid" "$p_cpu" "$p_mem" "$p_rss" "$p_vsz" "$p_state" "$p_time" "$p_cmd" "$threads"
+
+        total_cpu=$(echo "$total_cpu + $p_cpu" | bc)
+        total_mem=$(echo "$total_mem + $p_mem" | bc)
+        total_rss=$((total_rss + p_rss))
+        ((count++))
+    done
+
+    print_totals "$count" "$total_cpu" "$total_mem" "$total_rss"
+
+    # CPU health assessment
+    local cpu_int=${total_cpu%.*}
+    if (( cpu_int >= 100 )); then
+        echo -e "\n${RED}⚠ WARNING: High aggregate CPU usage (${total_cpu}%)${RESET}"
+        echo -e "${DIM}  Consider: claude-trace -v to check thread/file counts${RESET}"
+    fi
+
+    # Show tree if requested
+    $SHOW_TREE && show_tree
+
+    # Verbose extras
+    if $VERBOSE && [[ ${#pids[@]} -gt 0 ]]; then
+        echo -e "\n${BOLD}Diagnostic Commands:${RESET}"
+        for pid in "${pids[@]:0:3}"; do
+            echo -e "${DIM}  sample $pid 5 -file /tmp/claude_sample_$pid.txt${RESET}"
+        done
+    fi
+}
+
+# Main execution
+main() {
+    if $JSON_OUTPUT; then
+        if $WATCH_MODE; then
+            while true; do
+                output_json
+                sleep "$WATCH_INTERVAL"
+            done
+        else
+            output_json
+        fi
+    else
+        if $WATCH_MODE; then
+            while true; do
+                output_table
+                echo -e "\n${DIM}Refreshing every ${WATCH_INTERVAL}s... Press Ctrl+C to stop${RESET}"
+                sleep "$WATCH_INTERVAL"
+            done
+        else
+            output_table
+        fi
+    fi
+}
+
+main
