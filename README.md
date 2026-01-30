@@ -22,6 +22,21 @@ sudo cp target/release/claude-diagnose /usr/local/bin/
 sudo cp claude-trace /usr/local/bin/
 ```
 
+## Development
+
+A convenience script is provided for building and running the tools locally:
+
+```bash
+./dev.sh              # Build all and show status
+./dev.sh build        # Build Rust binary only
+./dev.sh trace        # Run the Bash monitor (claude-trace)
+./dev.sh trace -v     # Run with verbose output
+./dev.sh diagnose     # Run the Rust diagnostics (claude-diagnose)
+./dev.sh watch 5      # Watch mode with 5s refresh
+./dev.sh test         # Run tests and validate scripts
+./dev.sh clean        # Clean build artifacts
+```
+
 ## Tools
 
 ### `claude-trace` - Process Monitor (Bash)
@@ -41,7 +56,7 @@ claude-trace -w 5
 # JSON output for scripting
 claude-trace -j | jq '.totals.cpu_percent'
 
-# Verbose mode with thread counts
+# Verbose mode with threads, project, and working directory
 claude-trace -v
 
 # Show process tree
@@ -59,8 +74,16 @@ claude-trace -k 50
 | CPU% | CPU utilization percentage |
 | MEM% | Memory utilization percentage |
 | RSS | Resident Set Size (physical memory) |
-| STATE | Process state (R=running, S=sleeping) |
+| STATE | Process state (R=running, S=sleeping, S+=foreground) |
 | TIME | Cumulative CPU time |
+| COMMAND | Process command/arguments |
+
+**Verbose Mode (`-v`) adds:**
+| Field | Description |
+|-------|-------------|
+| THRDS | Thread count |
+| PROJECT | Project name (basename of working directory) |
+| CWD | Current working directory |
 
 ### `claude-diagnose` - Deep Diagnostics (Rust)
 
@@ -229,7 +252,10 @@ done
 # Prerequisites: Rust toolchain
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Build release binary
+# Option 1: Use the dev script
+./dev.sh build
+
+# Option 2: Build directly with cargo
 cargo build --release
 
 # Binary is at: target/release/claude-diagnose
