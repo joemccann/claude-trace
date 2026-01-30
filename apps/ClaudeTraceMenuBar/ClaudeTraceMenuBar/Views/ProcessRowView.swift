@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ProcessRowView: View {
     let process: ProcessInfo
+    let cpuThreshold: Double
+    let memoryThresholdMB: Int
     @State private var isExpanded = false
 
     var body: some View {
@@ -133,54 +135,64 @@ struct ProcessRowView: View {
     }
 
     private var cpuColor: Color {
-        if process.cpuPercent >= 80 { return .red }
-        if process.cpuPercent >= 50 { return .orange }
-        if process.cpuPercent >= 20 { return .cyan }
+        // Use configured threshold for warning color
+        if process.cpuPercent >= cpuThreshold { return .red }
+        if process.cpuPercent >= cpuThreshold * 0.625 { return .orange }  // 62.5% of threshold
+        if process.cpuPercent >= cpuThreshold * 0.25 { return .cyan }     // 25% of threshold
         return .primary
     }
 
     private var memoryColor: Color {
-        // >= 1GB red, >= 512MB orange, >= 256MB cyan
-        if process.rssKb >= 1_048_576 { return .red }
-        if process.rssKb >= 524_288 { return .orange }
-        if process.rssKb >= 262_144 { return .cyan }
+        // Use configured threshold for warning color (convert MB threshold to KB)
+        let thresholdKb = memoryThresholdMB * 1024
+        if process.rssKb >= thresholdKb { return .red }
+        if process.rssKb >= thresholdKb / 2 { return .orange }  // 50% of threshold
+        if process.rssKb >= thresholdKb / 4 { return .cyan }    // 25% of threshold
         return .primary
     }
 }
 
 #Preview {
     VStack {
-        ProcessRowView(process: ProcessInfo(
-            pid: 12345,
-            ppid: 1,
-            cpuPercent: 85.5,
-            memPercent: 2.3,
-            rssKb: 524288,
-            vszKb: 1048576,
-            state: "R",
-            elapsedTime: "02:34:56",
-            command: "/Users/user/.local/share/claude/claude-node",
-            openFiles: 42,
-            threads: 8,
-            cwd: "/Users/user/projects/my-project",
-            project: "my-project"
-        ))
+        ProcessRowView(
+            process: ProcessInfo(
+                pid: 12345,
+                ppid: 1,
+                cpuPercent: 85.5,
+                memPercent: 2.3,
+                rssKb: 524288,
+                vszKb: 1048576,
+                state: "R",
+                elapsedTime: "02:34:56",
+                command: "/Users/user/.local/share/claude/claude-node",
+                openFiles: 42,
+                threads: 8,
+                cwd: "/Users/user/projects/my-project",
+                project: "my-project"
+            ),
+            cpuThreshold: 80.0,
+            memoryThresholdMB: 1024
+        )
 
-        ProcessRowView(process: ProcessInfo(
-            pid: 12346,
-            ppid: 12345,
-            cpuPercent: 5.2,
-            memPercent: 0.8,
-            rssKb: 65536,
-            vszKb: 131072,
-            state: "S",
-            elapsedTime: "00:05:12",
-            command: "claude",
-            openFiles: 12,
-            threads: 4,
-            cwd: nil,
-            project: nil
-        ))
+        ProcessRowView(
+            process: ProcessInfo(
+                pid: 12346,
+                ppid: 12345,
+                cpuPercent: 5.2,
+                memPercent: 0.8,
+                rssKb: 65536,
+                vszKb: 131072,
+                state: "S",
+                elapsedTime: "00:05:12",
+                command: "claude",
+                openFiles: 12,
+                threads: 4,
+                cwd: nil,
+                project: nil
+            ),
+            cpuThreshold: 80.0,
+            memoryThresholdMB: 1024
+        )
     }
     .padding()
     .frame(width: 320)

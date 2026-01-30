@@ -92,7 +92,11 @@ struct MenuBarView: View {
             LazyVStack(alignment: .leading, spacing: 2) {
                 // Use stable order to prevent UI jumping when data updates
                 ForEach(monitor.sortedProcesses) { process in
-                    ProcessRowView(process: process)
+                    ProcessRowView(
+                        process: process,
+                        cpuThreshold: monitor.perProcessCpuThreshold,
+                        memoryThresholdMB: monitor.perProcessMemThresholdMB
+                    )
                 }
             }
         }
