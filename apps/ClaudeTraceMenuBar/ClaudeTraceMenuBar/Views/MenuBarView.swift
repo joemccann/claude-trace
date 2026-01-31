@@ -159,8 +159,35 @@ struct MenuBarView: View {
 
     // MARK: - Process List
 
+    /// Computes disambiguators for processes with the same display name.
+    /// Returns a dictionary mapping PID to disambiguator string (e.g., "#1", "#2").
+    /// Only processes that share a display name with others get disambiguators.
+    private var processDisambiguators: [Int: String] {
+        let processes = monitor.sortedProcesses
+
+        // Group by display name
+        var nameGroups: [String: [ProcessInfo]] = [:]
+        for process in processes {
+            nameGroups[process.displayName, default: []].append(process)
+        }
+
+        // Build disambiguator map only for names with multiple processes
+        var disambiguators: [Int: String] = [:]
+        for (_, group) in nameGroups where group.count > 1 {
+            // Sort by PID for consistent numbering
+            let sorted = group.sorted { $0.pid < $1.pid }
+            for (index, process) in sorted.enumerated() {
+                disambiguators[process.pid] = "#\(index + 1)"
+            }
+        }
+
+        return disambiguators
+    }
+
     private var processList: some View {
-        ScrollView {
+        let disambiguators = processDisambiguators
+
+        return ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
                 // Use stable order to prevent UI jumping when data updates
                 ForEach(monitor.sortedProcesses) { process in
@@ -168,7 +195,8 @@ struct MenuBarView: View {
                         process: process,
                         cpuThreshold: monitor.perProcessCpuThreshold,
                         memoryThresholdMB: monitor.perProcessMemThresholdMB,
-                        isHighlighted: monitor.highlightedPid == process.pid
+                        isHighlighted: monitor.highlightedPid == process.pid,
+                        disambiguator: disambiguators[process.pid]
                     )
                 }
             }

@@ -5,6 +5,7 @@ struct ProcessRowView: View {
     let cpuThreshold: Double
     let memoryThresholdMB: Int
     let isHighlighted: Bool
+    let disambiguator: String?  // Optional suffix to distinguish same-named processes
     @State private var isExpanded = false
     @State private var isHoveringDetails = false
 
@@ -24,9 +25,22 @@ struct ProcessRowView: View {
                 // Process name/project
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 6) {
-                        Text(process.displayName)
-                            .font(.system(.body, weight: .medium))
-                            .lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(process.displayName)
+                                .font(.system(.body, weight: .medium))
+                                .lineLimit(1)
+
+                            // Disambiguator for same-named processes
+                            if let disambiguator = disambiguator {
+                                Text(disambiguator)
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 1)
+                                    .background(Color.secondary.opacity(0.15))
+                                    .clipShape(RoundedRectangle(cornerRadius: 3))
+                            }
+                        }
 
                         // MCP badge for chrome-native-host processes
                         if process.isMCPProcess {
@@ -228,7 +242,8 @@ struct ProcessRowView: View {
             ),
             cpuThreshold: 80.0,
             memoryThresholdMB: 1024,
-            isHighlighted: true
+            isHighlighted: true,
+            disambiguator: "#1"
         )
 
         ProcessRowView(
@@ -250,7 +265,8 @@ struct ProcessRowView: View {
             ),
             cpuThreshold: 80.0,
             memoryThresholdMB: 1024,
-            isHighlighted: false
+            isHighlighted: false,
+            disambiguator: nil
         )
     }
     .padding()

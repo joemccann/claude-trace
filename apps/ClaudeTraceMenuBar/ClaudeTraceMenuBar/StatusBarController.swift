@@ -5,6 +5,7 @@ import AppKit
 class StatusBarController: NSObject, ObservableObject {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
+    private var rightClickMenu: NSMenu!
     private var eventMonitor: Any?
     private var monitor: ProcessMonitor
     private var sizeManager: PopoverSizeManager
@@ -23,9 +24,13 @@ class StatusBarController: NSObject, ObservableObject {
 
         if let button = statusItem.button {
             button.image = NSImage(systemSymbolName: "waveform.path.ecg", accessibilityDescription: "Claude Trace")
-            button.action = #selector(togglePopover)
+            button.action = #selector(handleStatusItemClick(_:))
             button.target = self
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
+
+        // Create right-click context menu
+        setupRightClickMenu()
 
         // Create popover with resizable container
         popover = NSPopover()
@@ -69,12 +74,57 @@ class StatusBarController: NSObject, ObservableObject {
         }
     }
 
+    private func setupRightClickMenu() {
+        rightClickMenu = NSMenu()
+
+        // Settings menu item
+        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.target = self
+        rightClickMenu.addItem(settingsItem)
+
+        rightClickMenu.addItem(NSMenuItem.separator())
+
+        // Quit menu item
+        let quitItem = NSMenuItem(title: "Quit Claude Trace", action: #selector(quitApp), keyEquivalent: "q")
+        quitItem.target = self
+        rightClickMenu.addItem(quitItem)
+    }
+
+    @objc private func handleStatusItemClick(_ sender: NSStatusBarButton) {
+        guard let event = NSApp.currentEvent else { return }
+
+        if event.type == .rightMouseUp {
+            // Show context menu on right-click
+            if popover.isShown {
+                popover.performClose(nil)
+            }
+            statusItem.menu = rightClickMenu
+            statusItem.button?.performClick(nil)
+            // Clear menu after showing so left-click works normally
+            DispatchQueue.main.async { [weak self] in
+                self?.statusItem.menu = nil
+            }
+        } else {
+            // Toggle popover on left-click
+            togglePopover()
+        }
+    }
+
     @objc private func togglePopover() {
         if popover.isShown {
             popover.performClose(nil)
         } else {
             showPopover()
         }
+    }
+
+    @objc private func openSettings() {
+        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    @objc private func quitApp() {
+        NSApp.terminate(nil)
     }
 
     func showPopover() {
