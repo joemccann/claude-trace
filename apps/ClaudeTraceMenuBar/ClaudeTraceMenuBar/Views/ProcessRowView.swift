@@ -6,6 +6,7 @@ struct ProcessRowView: View {
     let memoryThresholdMB: Int
     let isHighlighted: Bool
     @State private var isExpanded = false
+    @State private var isHoveringDetails = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -61,6 +62,21 @@ struct ProcessRowView: View {
                 expandedDetails
                     .padding(.leading, 16)
                     .padding(.top, 4)
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(isHoveringDetails ? Color.secondary.opacity(0.15) : Color.secondary.opacity(0.05))
+                    )
+                    .onHover { hovering in
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            isHoveringDetails = hovering
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture(count: 2) {
+                        ProcessDetailWindowController.shared.showWindow(for: process)
+                    }
             }
         }
         .padding(.vertical, 4)
@@ -80,6 +96,19 @@ struct ProcessRowView: View {
 
     private var expandedDetails: some View {
         VStack(alignment: .leading, spacing: 4) {
+            // Project name (prominently displayed if available)
+            if let project = process.project, !project.isEmpty {
+                HStack(spacing: 4) {
+                    Image(systemName: "folder.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.cyan)
+                    Text(project)
+                        .font(.system(.caption, weight: .semibold))
+                        .foregroundStyle(.primary)
+                }
+                .padding(.bottom, 2)
+            }
+
             // Command
             detailRow(label: "Command", value: truncatedCommand)
 
