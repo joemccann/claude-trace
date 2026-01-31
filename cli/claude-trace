@@ -267,7 +267,49 @@ get_cwd() {
     echo "$result"
 }
 
-# Extract project name from path (last directory component)
+# Extract project name from --append-system-prompt "Working in: X" in command line
+# Falls back to CWD basename if not found
+extract_project_from_command() {
+    local cmd=$1
+    local cwd=$2
+    local project=""
+
+    # Try to extract from --append-system-prompt "Working in: X"
+    # Handles both single and double quotes
+    if [[ "$cmd" =~ --append-system-prompt[[:space:]]+[\"\'"]Working\ in:\ ([^\"\']+)[\"\'"] ]]; then
+        project="${BASH_REMATCH[1]}"
+    elif [[ "$cmd" =~ --append-system-prompt[[:space:]]+\"Working\ in:\ ([^\"]+)\" ]]; then
+        project="${BASH_REMATCH[1]}"
+    elif [[ "$cmd" =~ --append-system-prompt[[:space:]]+\'Working\ in:\ ([^\']+)\' ]]; then
+        project="${BASH_REMATCH[1]}"
+    fi
+
+    # Fall back to CWD basename if no project found in command
+    if [[ -z "$project" && -n "$cwd" ]]; then
+        project=$(basename "$cwd")
+    fi
+
+    echo "$project"
+}
+
+# Extract session-id from command line if present
+extract_session_id() {
+    local cmd=$1
+    local session_id=""
+
+    # Match --session-id followed by UUID or any identifier
+    if [[ "$cmd" =~ --session-id[[:space:]]+([^[:space:]\"\']+) ]]; then
+        session_id="${BASH_REMATCH[1]}"
+    elif [[ "$cmd" =~ --session-id[[:space:]]+\"([^\"]+)\" ]]; then
+        session_id="${BASH_REMATCH[1]}"
+    elif [[ "$cmd" =~ --session-id[[:space:]]+\'([^\']+)\' ]]; then
+        session_id="${BASH_REMATCH[1]}"
+    fi
+
+    echo "$session_id"
+}
+
+# Extract project name from path (last directory component) - legacy fallback
 get_project_name() {
     local cwd=$1
     if [[ -n "$cwd" ]]; then
@@ -324,16 +366,22 @@ output_json() {
 PROC
 )
         if $VERBOSE; then
-            local open_files threads cwd project
+            local open_files threads cwd project session_id
             open_files=$(get_open_files "$p_pid")
             threads=$(get_thread_count "$p_pid")
             cwd=$(get_cwd "$p_pid")
-            project=$(get_project_name "$cwd")
+            project=$(extract_project_from_command "$p_cmd" "$cwd")
+            session_id=$(extract_session_id "$p_cmd")
             proc_json+=",
     \"open_files\": $open_files,
     \"threads\": $threads,
     \"cwd\": \"$(echo "$cwd" | sed 's/"/\\"/g')\",
     \"project\": \"$(echo "$project" | sed 's/"/\\"/g')\""
+            # Add session_id only if present
+            if [[ -n "$session_id" ]]; then
+                proc_json+=",
+    \"session_id\": \"$(echo "$session_id" | sed 's/"/\\"/g')\""
+            fi
         fi
 
         proc_json+="
@@ -546,7 +594,7 @@ output_table() {
         if $VERBOSE; then
             threads=$(get_thread_count "$p_pid")
             cwd=$(get_cwd "$p_pid")
-            project=$(get_project_name "$cwd")
+            project=$(extract_project_from_command "$p_cmd" "$cwd")
         fi
 
         print_row "$p_pid" "$p_ppid" "$p_cpu" "$p_mem" "$p_rss" "$p_vsz" "$p_state" "$p_time" "$p_cmd" "$threads" "$cwd" "$project"

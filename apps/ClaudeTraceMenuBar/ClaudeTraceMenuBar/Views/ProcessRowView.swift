@@ -215,7 +215,8 @@ struct ProcessRowView: View {
                 openFiles: 42,
                 threads: 8,
                 cwd: "/Users/user/projects/my-project",
-                project: "my-project"
+                project: "my-project",
+                sessionId: "abc123-def456"
             ),
             cpuThreshold: 80.0,
             memoryThresholdMB: 1024,
@@ -236,7 +237,8 @@ struct ProcessRowView: View {
                 openFiles: 12,
                 threads: 4,
                 cwd: nil,
-                project: nil
+                project: nil,
+                sessionId: nil
             ),
             cpuThreshold: 80.0,
             memoryThresholdMB: 1024,

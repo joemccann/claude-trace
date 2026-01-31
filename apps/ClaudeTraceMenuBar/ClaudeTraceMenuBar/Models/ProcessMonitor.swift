@@ -50,6 +50,7 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
     let threads: Int?
     let cwd: String?
     let project: String?
+    let sessionId: String?  // From --session-id flag
 
     var id: Int { pid }
 
@@ -61,6 +62,7 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
         case vszKb = "vsz_kb"
         case elapsedTime = "elapsed_time"
         case openFiles = "open_files"
+        case sessionId = "session_id"
     }
 
     /// Returns RSS in MB

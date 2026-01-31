@@ -205,6 +205,20 @@ struct ProcessDetailWindow: View {
                 }
             }
 
+            // Session ID (from --session-id flag)
+            if let sessionId = process.sessionId, !sessionId.isEmpty {
+                HStack(spacing: 4) {
+                    Text("Session:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(sessionId)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
+            }
+
             HStack(spacing: 24) {
                 infoRow(label: "RSS (KB)", value: "\(process.rssKb)")
                 infoRow(label: "VSZ (KB)", value: "\(process.vszKb)")
@@ -347,7 +361,8 @@ struct ProcessDetailWindow: View {
             openFiles: 42,
             threads: 8,
             cwd: "/Users/user/projects/my-project",
-            project: "my-project"
+            project: "my-project",
+            sessionId: "abc123-def456-789"
         ),
         cpuThreshold: 80.0,
         memoryThresholdMB: 1024,
