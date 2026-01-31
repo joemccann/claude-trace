@@ -422,9 +422,9 @@ print_header() {
             "PID" "PPID" "CPU%" "MEM%" "RSS" "STATE" "THRDS" "TIME" "PROJECT" "CWD"
         printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..140})"
     else
-        printf "${BOLD}%-7s %-7s %6s %6s %9s %5s %12s %-50s${RESET}\n" \
-            "PID" "PPID" "CPU%" "MEM%" "RSS" "STATE" "TIME" "COMMAND"
-        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
+        printf "${BOLD}%-7s %-7s %6s %6s %9s %5s %12s %-25s${RESET}\n" \
+            "PID" "PPID" "CPU%" "MEM%" "RSS" "STATE" "TIME" "PROJECT"
+        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..95})"
     fi
 }
 
@@ -492,12 +492,13 @@ print_row() {
         printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s ${rss_color}%9s${RESET} %5s %6s %12s %-20s %-50s%s\n" \
             "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$threads" "$time" "$project_truncated" "$cwd_truncated" "$warning"
     else
-        # Truncate command
-        local cmd_truncated="${cmd:0:50}"
-        [[ ${#cmd} -gt 50 ]] && cmd_truncated="${cmd_truncated}..."
+        # Truncate project for display
+        local project_display="${project:0:25}"
+        [[ ${#project} -gt 25 ]] && project_display="${project_display:0:22}..."
+        [[ -z "$project" ]] && project_display="${DIM}-${RESET}"
 
-        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s ${rss_color}%9s${RESET} %5s %12s %-50s%s\n" \
-            "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$time" "$cmd_truncated" "$warning"
+        printf "%-7s %-7s ${cpu_color}%6s${RESET} %6s ${rss_color}%9s${RESET} %5s %12s %-25s%s\n" \
+            "$pid" "$ppid" "$cpu" "$mem" "$rss_human" "$state" "$time" "$project_display" "$warning"
     fi
 }
 
@@ -508,7 +509,7 @@ print_totals() {
     if $VERBOSE; then
         printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..140})"
     else
-        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..120})"
+        printf "${DIM}%s${RESET}\n" "$(printf '─%.0s' {1..95})"
     fi
 
     local cpu_color=""
@@ -591,10 +592,11 @@ output_table() {
         read -r p_pid p_ppid p_cpu p_mem p_rss p_vsz p_state p_time p_cmd <<< "$info"
 
         local threads="" cwd="" project=""
+        # Always get cwd and project for display
+        cwd=$(get_cwd "$p_pid")
+        project=$(extract_project_from_command "$p_cmd" "$cwd")
         if $VERBOSE; then
             threads=$(get_thread_count "$p_pid")
-            cwd=$(get_cwd "$p_pid")
-            project=$(extract_project_from_command "$p_cmd" "$cwd")
         fi
 
         print_row "$p_pid" "$p_ppid" "$p_cpu" "$p_mem" "$p_rss" "$p_vsz" "$p_state" "$p_time" "$p_cmd" "$threads" "$cwd" "$project"
