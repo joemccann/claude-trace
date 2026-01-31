@@ -60,6 +60,7 @@ struct ProcessRowView: View {
             // Expanded details
             if isExpanded {
                 expandedDetails
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.leading, 16)
                     .padding(.top, 4)
                     .padding(.vertical, 6)
@@ -90,6 +91,7 @@ struct ProcessRowView: View {
                 .stroke(isHighlighted ? Color.orange : Color.clear, lineWidth: 2)
         )
         .animation(.easeInOut(duration: 0.3), value: isHighlighted)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Expanded Details
@@ -110,7 +112,7 @@ struct ProcessRowView: View {
             }
 
             // Command
-            detailRow(label: "Command", value: truncatedCommand)
+            detailRow(label: "Command", value: process.command)
 
             // Working directory
             if let cwd = process.cwd, !cwd.isEmpty {
@@ -154,13 +156,6 @@ struct ProcessRowView: View {
     }
 
     // MARK: - Computed Properties
-
-    private var truncatedCommand: String {
-        if process.command.count > 60 {
-            return String(process.command.prefix(57)) + "..."
-        }
-        return process.command
-    }
 
     private var stateDescription: String {
         switch process.state {

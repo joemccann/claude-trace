@@ -7,12 +7,15 @@ class StatusBarController: NSObject, ObservableObject {
     private var popover: NSPopover!
     private var eventMonitor: Any?
     private var monitor: ProcessMonitor
+    private var sizeManager: PopoverSizeManager
 
     init(monitor: ProcessMonitor) {
         self.monitor = monitor
+        self.sizeManager = PopoverSizeManager()
         super.init()
         setupStatusItem()
         setupNotificationObserver()
+        setupSizeObserver()
     }
 
     private func setupStatusItem() {
@@ -24,12 +27,16 @@ class StatusBarController: NSObject, ObservableObject {
             button.target = self
         }
 
-        // Create popover
+        // Create popover with resizable container
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 320, height: 450)
+        popover.contentSize = NSSize(width: sizeManager.width, height: sizeManager.height)
         popover.behavior = .transient
         popover.animates = true
-        popover.contentViewController = NSHostingController(rootView: MenuBarView(monitor: monitor))
+
+        let resizableContent = ResizablePopoverContainer(sizeManager: sizeManager) {
+            MenuBarView(monitor: monitor, sizeManager: sizeManager)
+        }
+        popover.contentViewController = NSHostingController(rootView: resizableContent)
 
         // Close popover when clicking outside
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -51,6 +58,15 @@ class StatusBarController: NSObject, ObservableObject {
             name: .openMenuBarPopover,
             object: nil
         )
+    }
+
+    private func setupSizeObserver() {
+        // Wire up size manager to update NSPopover contentSize
+        sizeManager.onSizeChange = { [weak self] newSize in
+            DispatchQueue.main.async {
+                self?.popover.contentSize = newSize
+            }
+        }
     }
 
     @objc private func togglePopover() {

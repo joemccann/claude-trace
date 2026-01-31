@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     @Bindable var monitor: ProcessMonitor
+    var sizeManager: PopoverSizeManager?
     @State private var showingSettings = false
 
     var body: some View {
@@ -31,7 +32,7 @@ struct MenuBarView: View {
             footerSection
         }
         .padding(8)
-        .frame(width: 320)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     // MARK: - Alert Banner
@@ -152,6 +153,7 @@ struct MenuBarView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 4)
     }
 
@@ -171,7 +173,7 @@ struct MenuBarView: View {
                 }
             }
         }
-        .frame(maxHeight: 300)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Empty State
@@ -205,6 +207,16 @@ struct MenuBarView: View {
 
             Spacer()
 
+            // Reset size button (only if size manager is available and size has changed)
+            if let sm = sizeManager,
+               sm.width != PopoverSizeManager.defaultWidth || sm.height != PopoverSizeManager.defaultHeight {
+                Button(action: { sm.resetToDefault() }) {
+                    Image(systemName: "arrow.uturn.backward")
+                }
+                .buttonStyle(.borderless)
+                .help("Reset window size")
+            }
+
             // Settings button
             Button(action: { showingSettings = true }) {
                 Image(systemName: "gearshape")
@@ -232,6 +244,7 @@ struct MenuBarView: View {
             }
             .buttonStyle(.borderless)
         }
+        .frame(maxWidth: .infinity)
         .padding(.horizontal, 4)
     }
 
@@ -271,5 +284,8 @@ struct MenuBarView: View {
 
 #Preview {
     let monitor = ProcessMonitor()
-    return MenuBarView(monitor: monitor)
+    let sizeManager = PopoverSizeManager()
+    return ResizablePopoverContainer(sizeManager: sizeManager) {
+        MenuBarView(monitor: monitor, sizeManager: sizeManager)
+    }
 }
