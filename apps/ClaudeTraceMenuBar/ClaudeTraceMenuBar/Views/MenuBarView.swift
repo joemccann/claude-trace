@@ -195,6 +195,16 @@ struct MenuBarView: View {
 
     private var footerSection: some View {
         HStack {
+            // Quit button (moved away from resize corner)
+            Button("Quit") {
+                NSApplication.shared.terminate(nil)
+            }
+            .buttonStyle(.borderless)
+
+            Divider()
+                .frame(height: 16)
+                .padding(.horizontal, 4)
+
             // Monitoring status
             HStack(spacing: 4) {
                 Circle()
@@ -231,16 +241,6 @@ struct MenuBarView: View {
                 monitor.restartMonitoring()
             }) {
                 Image(systemName: "arrow.clockwise")
-            }
-            .buttonStyle(.borderless)
-
-            Divider()
-                .frame(height: 16)
-                .padding(.horizontal, 4)
-
-            // Quit button
-            Button("Quit") {
-                NSApplication.shared.terminate(nil)
             }
             .buttonStyle(.borderless)
         }

@@ -97,6 +97,12 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
         }
         return "claude"
     }
+
+    /// Returns true if this is an MCP (Model Context Protocol) process
+    /// Detected by the --chrome-native-host flag in the command
+    var isMCPProcess: Bool {
+        command.contains("--chrome-native-host")
+    }
 }
 
 // MARK: - Alert Info (shown when notification is clicked)

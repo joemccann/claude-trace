@@ -21,7 +21,7 @@ final class ProcessDetailWindowController {
     private var currentPID: Int?
 
     /// Window autosave name for remembering frame between uses
-    private let windowAutosaveName = "ProcessDetailWindow"
+    private let windowAutosaveName = "ProcessDetailWindowV2"
 
     // MARK: - Initialization
 
@@ -74,30 +74,27 @@ final class ProcessDetailWindowController {
         let hosting = NSHostingController(rootView: detailView)
         hostingController = hosting
 
-        // Create window with standard chrome
+        // Create window with standard chrome - use popover-aligned dimensions
         let newWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 450, height: 500),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 600),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
 
         // Configure window
-        newWindow.title = "Process Details - \(process.displayName) (PID \(process.pid))"
+        newWindow.title = "Process Details - \(process.displayName) (PID \(String(process.pid)))"
         newWindow.contentViewController = hosting
-        newWindow.minSize = NSSize(width: 350, height: 400)
+        newWindow.minSize = NSSize(width: 400, height: 450)
+        newWindow.maxSize = NSSize(width: 800, height: 1000)
 
         // Set window level to floating but not always on top
         newWindow.level = .normal
         newWindow.isReleasedWhenClosed = false
 
-        // Window autosave for remembering position
-        newWindow.setFrameAutosaveName(windowAutosaveName)
-
-        // If no saved frame, center the window
-        if !newWindow.setFrameUsingName(windowAutosaveName) {
-            newWindow.center()
-        }
+        // Always use fixed size and center
+        newWindow.setContentSize(NSSize(width: 520, height: 600))
+        newWindow.center()
 
         // Set up close notification to clean up
         NotificationCenter.default.addObserver(
@@ -116,7 +113,7 @@ final class ProcessDetailWindowController {
         hostingController?.rootView = detailView
 
         // Update window title
-        window?.title = "Process Details - \(process.displayName) (PID \(process.pid))"
+        window?.title = "Process Details - \(process.displayName) (PID \(String(process.pid)))"
     }
 
     @objc private func windowWillClose(_ notification: Notification) {

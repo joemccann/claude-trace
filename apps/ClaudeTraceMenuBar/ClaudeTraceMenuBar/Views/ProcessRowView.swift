@@ -23,10 +23,23 @@ struct ProcessRowView: View {
 
                 // Process name/project
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(process.displayName)
-                        .font(.system(.body, weight: .medium))
-                        .lineLimit(1)
-                    Text("PID \(process.pid)")
+                    HStack(spacing: 6) {
+                        Text(process.displayName)
+                            .font(.system(.body, weight: .medium))
+                            .lineLimit(1)
+
+                        // MCP badge for chrome-native-host processes
+                        if process.isMCPProcess {
+                            Text("MCP")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.purple)
+                                .clipShape(Capsule())
+                        }
+                    }
+                    Text("PID \(String(process.pid))")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }

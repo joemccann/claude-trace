@@ -35,7 +35,7 @@ struct ProcessDetailWindow: View {
             }
             .padding(20)
         }
-        .frame(width: 420, height: 480)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
@@ -44,9 +44,22 @@ struct ProcessDetailWindow: View {
     private var headerSection: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(process.displayName)
-                    .font(.system(.title2, weight: .semibold))
-                Text("PID \(process.pid)")
+                HStack(spacing: 8) {
+                    Text(process.displayName)
+                        .font(.system(.title2, weight: .semibold))
+
+                    // MCP badge for chrome-native-host processes
+                    if process.isMCPProcess {
+                        Text("MCP")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.purple)
+                            .clipShape(Capsule())
+                    }
+                }
+                Text("PID \(String(process.pid))")
                     .font(.system(.body, design: .monospaced))
                     .foregroundStyle(.secondary)
             }
