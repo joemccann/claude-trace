@@ -92,6 +92,7 @@ A convenience script is provided for building and running all tools:
 ./dev.sh diagnose     # Run the Rust diagnostics (claude-diagnose)
 ./dev.sh watch 5      # Watch mode with 5s refresh
 ./dev.sh run-app      # Build and launch the menu bar app
+./dev.sh install      # Build and install menu bar app to /Applications
 ./dev.sh test         # Run tests and validate scripts
 ./dev.sh clean        # Clean build artifacts
 ```
