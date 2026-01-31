@@ -141,14 +141,27 @@ Fast, lightweight Bash script for real-time process monitoring.
 | RSS | Resident Set Size (color-coded: red ≥1GB, yellow ≥512MB, cyan ≥256MB) |
 | STATE | Process state (R=running, S=sleeping, S+=foreground) |
 | TIME | Cumulative CPU time |
-| COMMAND | Process command/arguments |
+| PROJECT | Project name (extracted from `--append-system-prompt` or CWD basename) |
 
 **Verbose Mode (`-v`) adds:**
 | Field | Description |
 |-------|-------------|
 | THRDS | Thread count |
-| PROJECT | Project name (basename of working directory) |
 | CWD | Current working directory |
+
+### Project Name Detection
+
+The CLI automatically extracts project names from Claude sessions:
+
+1. **From `--append-system-prompt`**: If you launch Claude with `--append-system-prompt "Working in: myproject"`, the project name "myproject" is extracted
+2. **Fallback to CWD**: Otherwise, uses the basename of the process's working directory
+
+**Recommended alias for better project tracking:**
+```bash
+alias claude='claude --append-system-prompt "Working in: $(basename "$PWD")"'
+```
+
+This ensures every Claude session shows its project name in both the CLI and menu bar app.
 
 ### `claude-diagnose` - Deep Diagnostics (Rust)
 
@@ -257,7 +270,10 @@ A native macOS menu bar application for always-on monitoring with desktop notifi
 ### Features
 
 - **Real-time monitoring** - Polls claude-trace for process data at configurable intervals
+- **Project names** - Shows project names for each Claude session (from `--append-system-prompt` or CWD)
 - **Menu bar presence** - Always visible CPU/memory summary in your menu bar
+- **Expandable rows** - Click to expand process details, hover for visual feedback
+- **Double-click detail window** - Open a floating window with full process information
 - **Native notifications** - Get alerted when thresholds are exceeded
 - **Configurable thresholds** - Set aggregate and per-process CPU/memory limits
 - **Launch at Login** - Start monitoring automatically
