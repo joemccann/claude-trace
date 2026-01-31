@@ -157,12 +157,33 @@ The CLI automatically extracts project names from Claude sessions:
 1. **From `--append-system-prompt`**: If you launch Claude with `--append-system-prompt "Working in: myproject"`, the project name "myproject" is extracted
 2. **Fallback to CWD**: Otherwise, uses the basename of the process's working directory
 
-**Recommended alias for better project tracking:**
+**Recommended functions for unique instance tracking:**
+
+Add these to your `~/.zshrc` to ensure every Claude instance is uniquely identifiable—even when running multiple sessions in the same project:
+
 ```bash
-alias claude='claude --append-system-prompt "Working in: $(basename "$PWD")"'
+# Standard Claude with unique instance tracking
+claude_traced() {
+  local dir=${PWD:t}          # basename of $PWD in zsh
+  local tty_id=${TTY:t}       # e.g. /dev/ttys003 -> ttys003
+  command claude \
+    --append-system-prompt "Working in: ${dir} @${tty_id}" \
+    "$@"
+}
+alias claude=claude_traced
+
+# Skip permissions variant (use with caution)
+claude_skip() {
+  local dir=${PWD:t}
+  local tty_id=${TTY:t}
+  command claude --dangerously-skip-permissions \
+    --append-system-prompt "Working in: ${dir} @${tty_id}" \
+    "$@"
+}
+alias claude-skip=claude_skip
 ```
 
-This ensures every Claude session shows its project name in both the CLI and menu bar app.
+Both append the project directory and terminal session ID (e.g., `Working in: myproject @ttys003`), guaranteeing each Claude instance is distinguishable in the CLI and menu bar app. Use `claude` for normal operation with permission prompts, or `claude-skip` when you want to bypass them.
 
 ### `claude-diagnose` - Deep Diagnostics (Rust)
 
