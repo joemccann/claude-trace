@@ -40,7 +40,7 @@ export function JsonLd() {
           'Real-time CPU and memory monitoring for Claude Code CLI. Native macOS menu bar app with instant visibility into every Claude process.',
         url: 'https://claude-trace.com',
         downloadUrl: 'https://github.com/joemccann/claude-trace',
-        softwareVersion: '1.13.0',
+        softwareVersion: '1.13.3',
         softwareRequirements: 'macOS 14.0+ and Xcode 15.0+',
         author: {
           '@id': 'https://claude-trace.com/#organization',

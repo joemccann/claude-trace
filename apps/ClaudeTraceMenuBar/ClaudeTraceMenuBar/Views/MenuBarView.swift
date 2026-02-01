@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct MenuBarView: View {
     @Bindable var monitor: ProcessMonitor
     var sizeManager: PopoverSizeManager?

@@ -329,7 +329,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.13.2;
+				MARKETING_VERSION = 1.13.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.claudetrace.menubar";
 				PRODUCT_NAME = "Claude Trace";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -358,7 +358,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.13.2;
+				MARKETING_VERSION = 1.13.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.claudetrace.menubar";
 				PRODUCT_NAME = "Claude Trace";
 				SWIFT_EMIT_LOC_STRINGS = YES;

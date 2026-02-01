@@ -192,6 +192,7 @@ class StatusBarController: NSObject, ObservableObject {
         }
     }
 
+    @MainActor
     private func updateStatusIcon() {
         guard let button = statusItem.button else { return }
 
