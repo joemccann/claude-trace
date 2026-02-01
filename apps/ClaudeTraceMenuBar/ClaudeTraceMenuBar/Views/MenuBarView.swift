@@ -4,6 +4,7 @@ struct MenuBarView: View {
     @Bindable var monitor: ProcessMonitor
     var sizeManager: PopoverSizeManager?
     @State private var showingSettings = false
+    @State private var showingVersionCheck = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -17,6 +18,11 @@ struct MenuBarView: View {
 
             Divider()
                 .padding(.vertical, 4)
+
+            // Warnings section (orphaned/outdated)
+            if monitor.orphanedCount > 0 || monitor.outdatedCount > 0 {
+                warningsSection
+            }
 
             // Process list or empty state
             if monitor.processes.isEmpty {
@@ -196,12 +202,57 @@ struct MenuBarView: View {
                         cpuThreshold: monitor.perProcessCpuThreshold,
                         memoryThresholdMB: monitor.perProcessMemThresholdMB,
                         isHighlighted: monitor.highlightedPid == process.pid,
-                        disambiguator: disambiguators[process.pid]
+                        disambiguator: disambiguators[process.pid],
+                        onKill: { pid, force in
+                            Task {
+                                _ = await monitor.killProcess(pid: pid, force: force)
+                            }
+                        }
                     )
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    // MARK: - Warnings Section
+
+    private var warningsSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if monitor.orphanedCount > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                    Text("\(monitor.orphanedCount) orphaned process\(monitor.orphanedCount == 1 ? "" : "es")")
+                        .font(.caption)
+                    Spacer()
+                    Text("MCP without Claude Desktop")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if monitor.outdatedCount > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.yellow)
+                    Text("\(monitor.outdatedCount) outdated process\(monitor.outdatedCount == 1 ? "" : "es")")
+                        .font(.caption)
+                    Spacer()
+                    if let version = monitor.latestLocalVersion {
+                        Text("Latest: \(version)")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color.orange.opacity(0.1))
+        )
+        .padding(.bottom, 4)
     }
 
     // MARK: - Empty State
@@ -255,6 +306,16 @@ struct MenuBarView: View {
                 .help("Reset window size")
             }
 
+            // Version check button
+            Button(action: { showingVersionCheck = true }) {
+                Image(systemName: "arrow.up.circle")
+            }
+            .buttonStyle(.borderless)
+            .help("Check for updates")
+            .popover(isPresented: $showingVersionCheck) {
+                versionCheckPopover
+            }
+
             // Settings button
             Button(action: { showingSettings = true }) {
                 Image(systemName: "gearshape")
@@ -274,6 +335,64 @@ struct MenuBarView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.horizontal, 4)
+    }
+
+    // MARK: - Version Check Popover
+
+    private var versionCheckPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Claude Code Version")
+                    .font(.headline)
+                Spacer()
+            }
+
+            if let version = monitor.latestLocalVersion {
+                HStack {
+                    Text("Installed:")
+                        .foregroundStyle(.secondary)
+                    Text(version)
+                        .font(.system(.body, design: .monospaced))
+                }
+            }
+
+            if monitor.isCheckingVersion {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                    Text("Checking for updates...")
+                        .foregroundStyle(.secondary)
+                }
+            } else if let result = monitor.versionCheckResult {
+                HStack(spacing: 6) {
+                    Image(systemName: result.isUpToDate ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
+                        .foregroundStyle(result.isUpToDate ? .green : .orange)
+                    Text(result.message)
+                        .font(.caption)
+                }
+
+                if case .updateAvailable = result {
+                    Button("Upgrade Now") {
+                        Task {
+                            let success = await monitor.upgradeClaudeCode()
+                            if success {
+                                await monitor.checkForUpdates()
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+            }
+
+            Button("Check for Updates") {
+                Task {
+                    await monitor.checkForUpdates()
+                }
+            }
+            .disabled(monitor.isCheckingVersion)
+        }
+        .padding()
+        .frame(width: 240)
     }
 
     // MARK: - Color Helpers

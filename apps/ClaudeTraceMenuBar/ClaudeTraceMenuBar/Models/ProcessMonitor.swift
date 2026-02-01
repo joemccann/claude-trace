@@ -8,15 +8,20 @@ struct TraceOutput: Codable {
     let hostname: String
     let os: String
     let osVersion: String
+    let latestLocalVersion: String?
     let processCount: Int
+    let orphanedCount: Int?
+    let outdatedCount: Int?
     let totals: Totals
     let processes: [ProcessInfo]
 
     enum CodingKeys: String, CodingKey {
-        case timestamp, hostname, os, processes
+        case timestamp, hostname, os, processes, totals
         case osVersion = "os_version"
+        case latestLocalVersion = "latest_local_version"
         case processCount = "process_count"
-        case totals
+        case orphanedCount = "orphaned_count"
+        case outdatedCount = "outdated_count"
     }
 }
 
@@ -46,6 +51,9 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
     let state: String
     let elapsedTime: String
     let command: String
+    let version: String?
+    let isOrphaned: Bool?
+    let isOutdated: Bool?
     let openFiles: Int?
     let threads: Int?
     let cwd: String?
@@ -55,12 +63,14 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
     var id: Int { pid }
 
     enum CodingKeys: String, CodingKey {
-        case pid, ppid, state, command, threads, cwd, project
+        case pid, ppid, state, command, version, threads, cwd, project
         case cpuPercent = "cpu_percent"
         case memPercent = "mem_percent"
         case rssKb = "rss_kb"
         case vszKb = "vsz_kb"
         case elapsedTime = "elapsed_time"
+        case isOrphaned = "is_orphaned"
+        case isOutdated = "is_outdated"
         case openFiles = "open_files"
         case sessionId = "session_id"
     }
@@ -102,6 +112,21 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
     /// Detected by the --chrome-native-host flag in the command
     var isMCPProcess: Bool {
         command.contains("--chrome-native-host")
+    }
+
+    /// Returns true if this is an orphaned Chrome MCP process
+    var orphaned: Bool {
+        isOrphaned ?? false
+    }
+
+    /// Returns true if running an outdated version
+    var outdated: Bool {
+        isOutdated ?? false
+    }
+
+    /// Returns true if process has any warnings
+    var hasWarnings: Bool {
+        orphaned || outdated
     }
 }
 
@@ -152,6 +177,15 @@ final class ProcessMonitor {
     var isRunning = false
     var errorMessage: String?
 
+    // Version tracking
+    var latestLocalVersion: String?
+    var orphanedCount: Int = 0
+    var outdatedCount: Int = 0
+
+    // Version check state
+    var isCheckingVersion = false
+    var versionCheckResult: VersionCheckResult?
+
     // Highlighted process (from notification click)
     var highlightedPid: Int?
 
@@ -172,13 +206,16 @@ final class ProcessMonitor {
     // Path to CLI tool
     private var cliPath: String {
         // Look for CLI tool relative to app bundle or in common locations
+        // Priority: project path first (for development), then installed paths
         let possiblePaths = [
+            // Project path (hardcoded for development)
+            NSHomeDirectory() + "/dev/apps/ops/claude-trace/cli/claude-trace",
             // Development path (relative to project)
             Bundle.main.bundlePath + "/../../../../../cli/claude-trace",
-            // Installed path
-            "/usr/local/bin/claude-trace",
             // Home directory
             NSHomeDirectory() + "/.local/bin/claude-trace",
+            // Installed path (check last since it may be outdated)
+            "/usr/local/bin/claude-trace",
             // Current working directory
             FileManager.default.currentDirectoryPath + "/cli/claude-trace"
         ]
@@ -284,6 +321,9 @@ final class ProcessMonitor {
             // Update state
             self.processes = traceOutput.processes
             self.totals = traceOutput.totals
+            self.latestLocalVersion = traceOutput.latestLocalVersion
+            self.orphanedCount = traceOutput.orphanedCount ?? 0
+            self.outdatedCount = traceOutput.outdatedCount ?? 0
             self.lastUpdate = Date()
             self.errorMessage = nil
 
@@ -378,6 +418,168 @@ final class ProcessMonitor {
                     actual: process.rssHuman,
                     processName: process.displayName
                 )
+            }
+
+            // Check for orphaned processes
+            if process.orphaned {
+                notificationService.sendNotification(
+                    type: .orphanedProcess(pid: process.pid),
+                    title: "Orphaned MCP Process",
+                    body: "\(process.displayName) (PID \(process.pid)) is running without Claude Desktop",
+                    processName: process.displayName
+                )
+            }
+
+            // Check for outdated processes
+            if process.outdated {
+                let versionInfo = process.version ?? "unknown"
+                let latestInfo = latestLocalVersion ?? "unknown"
+                notificationService.sendNotification(
+                    type: .outdatedProcess(pid: process.pid),
+                    title: "Outdated Claude Version",
+                    body: "\(process.displayName) (PID \(process.pid)) is running v\(versionInfo) (latest: v\(latestInfo))",
+                    threshold: latestInfo,
+                    actual: versionInfo,
+                    processName: process.displayName
+                )
+            }
+        }
+    }
+}
+
+// MARK: - Version Check Result
+
+enum VersionCheckResult: Equatable {
+    case upToDate(version: String)
+    case updateAvailable(current: String, latest: String)
+    case error(message: String)
+
+    var isUpToDate: Bool {
+        if case .upToDate = self { return true }
+        return false
+    }
+
+    var message: String {
+        switch self {
+        case .upToDate(let version):
+            return "Running latest version (\(version))"
+        case .updateAvailable(let current, let latest):
+            return "Update available: \(current) → \(latest)"
+        case .error(let message):
+            return "Error: \(message)"
+        }
+    }
+}
+
+// MARK: - Process Monitor Extensions
+
+extension ProcessMonitor {
+    /// Kill a Claude process
+    @MainActor
+    func killProcess(pid: Int, force: Bool = false) async -> Bool {
+        let args = force ? [cliPath, "-K", "\(pid)", "-9"] : [cliPath, "-K", "\(pid)"]
+
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+                process.arguments = args
+                process.standardOutput = FileHandle.nullDevice
+                process.standardError = FileHandle.nullDevice
+
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    continuation.resume(returning: process.terminationStatus == 0)
+                } catch {
+                    continuation.resume(returning: false)
+                }
+            }
+        }
+    }
+
+    /// Check for Claude Code updates
+    @MainActor
+    func checkForUpdates() async {
+        isCheckingVersion = true
+        versionCheckResult = nil
+
+        let result = await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async { [self] in
+                let process = Process()
+                let pipe = Pipe()
+
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+                process.arguments = [cliPath, "--check-version"]
+                process.standardOutput = pipe
+                process.standardError = pipe
+
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+
+                    let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                    let output = String(data: data, encoding: .utf8) ?? ""
+
+                    if output.contains("latest version") || output.contains("newer than npm") {
+                        // Extract version from output
+                        let version = self.latestLocalVersion ?? "unknown"
+                        continuation.resume(returning: VersionCheckResult.upToDate(version: version))
+                    } else if output.contains("Update available") {
+                        // Parse current and latest versions
+                        if let match = output.range(of: #"(\d+\.\d+\.\d+) → (\d+\.\d+\.\d+)"#, options: .regularExpression) {
+                            let versionStr = String(output[match])
+                            let parts = versionStr.split(separator: " ")
+                            if parts.count >= 3 {
+                                let current = String(parts[0])
+                                let latest = String(parts[2])
+                                continuation.resume(returning: VersionCheckResult.updateAvailable(current: current, latest: latest))
+                            } else {
+                                continuation.resume(returning: VersionCheckResult.updateAvailable(
+                                    current: self.latestLocalVersion ?? "unknown",
+                                    latest: "newer"
+                                ))
+                            }
+                        } else {
+                            continuation.resume(returning: VersionCheckResult.updateAvailable(
+                                current: self.latestLocalVersion ?? "unknown",
+                                latest: "newer"
+                            ))
+                        }
+                    } else if output.contains("Error") || process.terminationStatus != 0 {
+                        continuation.resume(returning: VersionCheckResult.error(message: "Failed to check version"))
+                    } else {
+                        continuation.resume(returning: VersionCheckResult.upToDate(version: self.latestLocalVersion ?? "unknown"))
+                    }
+                } catch {
+                    continuation.resume(returning: VersionCheckResult.error(message: error.localizedDescription))
+                }
+            }
+        }
+
+        isCheckingVersion = false
+        versionCheckResult = result
+    }
+
+    /// Upgrade Claude Code to latest version
+    @MainActor
+    func upgradeClaudeCode() async -> Bool {
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async { [self] in
+                let process = Process()
+
+                process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+                process.arguments = [cliPath, "--upgrade"]
+                process.standardOutput = FileHandle.nullDevice
+                process.standardError = FileHandle.nullDevice
+
+                do {
+                    try process.run()
+                    process.waitUntilExit()
+                    continuation.resume(returning: process.terminationStatus == 0)
+                } catch {
+                    continuation.resume(returning: false)
+                }
             }
         }
     }

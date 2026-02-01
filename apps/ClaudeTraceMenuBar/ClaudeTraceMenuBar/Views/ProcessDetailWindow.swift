@@ -58,6 +58,30 @@ struct ProcessDetailWindow: View {
                             .background(Color.purple)
                             .clipShape(Capsule())
                     }
+
+                    // Orphaned badge
+                    if process.orphaned {
+                        Text("ORPHANED")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.orange)
+                            .clipShape(Capsule())
+                            .help("This MCP process is running without Claude Desktop")
+                    }
+
+                    // Outdated badge
+                    if process.outdated {
+                        Text("OUTDATED")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.yellow.opacity(0.8))
+                            .clipShape(Capsule())
+                            .help("Running an older version of Claude Code")
+                    }
                 }
                 Text("PID \(String(process.pid))")
                     .font(.system(.body, design: .monospaced))
@@ -216,6 +240,10 @@ struct ProcessDetailWindow: View {
                 if let project = process.project, !project.isEmpty {
                     infoRow(label: "Project", value: project)
                 }
+
+                if let version = process.version, !version.isEmpty {
+                    infoRow(label: "Version", value: version)
+                }
             }
 
             // Session ID (from --session-id flag)
@@ -370,7 +398,10 @@ struct ProcessDetailWindow: View {
             vszKb: 2097152,
             state: "R",
             elapsedTime: "02:34:56",
-            command: "/Users/user/.local/share/claude/claude-node --some-arg --another-arg /Users/user/projects/very-long-project-name-here",
+            command: "/Users/user/.local/share/claude/versions/2.1.29 --some-arg --another-arg /Users/user/projects/very-long-project-name-here",
+            version: "2.1.29",
+            isOrphaned: true,
+            isOutdated: false,
             openFiles: 42,
             threads: 8,
             cwd: "/Users/user/projects/my-project",

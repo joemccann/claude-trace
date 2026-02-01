@@ -6,8 +6,10 @@ struct ProcessRowView: View {
     let memoryThresholdMB: Int
     let isHighlighted: Bool
     let disambiguator: String?  // Optional suffix to distinguish same-named processes
+    var onKill: ((Int, Bool) -> Void)?  // Callback for kill action (pid, force)
     @State private var isExpanded = false
     @State private var isHoveringDetails = false
+    @State private var showKillConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -52,6 +54,30 @@ struct ProcessRowView: View {
                                 .background(Color.purple)
                                 .clipShape(Capsule())
                         }
+
+                        // Orphaned badge
+                        if process.orphaned {
+                            Text("ORPHANED")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.orange)
+                                .clipShape(Capsule())
+                                .help("This MCP process is running without Claude Desktop")
+                        }
+
+                        // Outdated badge
+                        if process.outdated {
+                            Text("OUTDATED")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.yellow.opacity(0.8))
+                                .clipShape(Capsule())
+                                .help("Running an older version of Claude Code")
+                        }
                     }
                     Text("PID \(String(process.pid))")
                         .font(.caption2)
@@ -82,6 +108,39 @@ struct ProcessRowView: View {
                 withAnimation(.easeInOut(duration: 0.3)) {
                     isExpanded.toggle()
                 }
+            }
+            .contextMenu {
+                Button {
+                    ProcessDetailWindowController.shared.showWindow(for: process)
+                } label: {
+                    Label("Show Details", systemImage: "info.circle")
+                }
+
+                Divider()
+
+                Button {
+                    onKill?(process.pid, false)
+                } label: {
+                    Label("Terminate (SIGTERM)", systemImage: "stop.circle")
+                }
+
+                Button(role: .destructive) {
+                    showKillConfirmation = true
+                } label: {
+                    Label("Force Kill (SIGKILL)", systemImage: "xmark.circle.fill")
+                }
+            }
+            .confirmationDialog(
+                "Force kill process \(process.pid)?",
+                isPresented: $showKillConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Force Kill", role: .destructive) {
+                    onKill?(process.pid, true)
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will immediately terminate \(process.displayName) without cleanup.")
             }
 
             // Expanded details
@@ -146,10 +205,13 @@ struct ProcessRowView: View {
                 detailRow(label: "Directory", value: cwd)
             }
 
-            // State and time
+            // State, time, and version
             HStack(spacing: 16) {
                 detailRow(label: "State", value: stateDescription)
                 detailRow(label: "Time", value: process.elapsedTime)
+                if let version = process.version, !version.isEmpty {
+                    detailRow(label: "Version", value: version)
+                }
             }
 
             // Threads and files (if available)
@@ -233,7 +295,10 @@ struct ProcessRowView: View {
                 vszKb: 1048576,
                 state: "R",
                 elapsedTime: "02:34:56",
-                command: "/Users/user/.local/share/claude/claude-node",
+                command: "/Users/user/.local/share/claude/versions/2.1.29 --chrome-native-host",
+                version: "2.1.29",
+                isOrphaned: false,
+                isOutdated: false,
                 openFiles: 42,
                 threads: 8,
                 cwd: "/Users/user/projects/my-project",
@@ -256,7 +321,10 @@ struct ProcessRowView: View {
                 vszKb: 131072,
                 state: "S",
                 elapsedTime: "00:05:12",
-                command: "claude",
+                command: "/Users/user/.local/share/claude/versions/2.1.27 --claude-in-chrome-mcp",
+                version: "2.1.27",
+                isOrphaned: true,
+                isOutdated: true,
                 openFiles: 12,
                 threads: 4,
                 cwd: nil,

@@ -8,6 +8,8 @@ enum NotificationType: Hashable {
     case highAggregateMemory
     case highProcessCPU(pid: Int)
     case highProcessMemory(pid: Int)
+    case orphanedProcess(pid: Int)
+    case outdatedProcess(pid: Int)
 
     var identifier: String {
         switch self {
@@ -19,6 +21,10 @@ enum NotificationType: Hashable {
             return "process_cpu_\(pid)"
         case .highProcessMemory(let pid):
             return "process_memory_\(pid)"
+        case .orphanedProcess(let pid):
+            return "orphaned_\(pid)"
+        case .outdatedProcess(let pid):
+            return "outdated_\(pid)"
         }
     }
 
@@ -28,6 +34,10 @@ enum NotificationType: Hashable {
             return "CPU_ALERT"
         case .highAggregateMemory, .highProcessMemory:
             return "MEMORY_ALERT"
+        case .orphanedProcess:
+            return "ORPHAN_ALERT"
+        case .outdatedProcess:
+            return "OUTDATED_ALERT"
         }
     }
 }
@@ -101,7 +111,23 @@ final class NotificationService: NSObject {
             options: [.customDismissAction]
         )
 
-        center.setNotificationCategories([cpuCategory, memoryCategory])
+        // Orphan Alert category
+        let orphanCategory = UNNotificationCategory(
+            identifier: "ORPHAN_ALERT",
+            actions: [viewAction, dismissAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+
+        // Outdated Alert category
+        let outdatedCategory = UNNotificationCategory(
+            identifier: "OUTDATED_ALERT",
+            actions: [viewAction, dismissAction],
+            intentIdentifiers: [],
+            options: [.customDismissAction]
+        )
+
+        center.setNotificationCategories([cpuCategory, memoryCategory, orphanCategory, outdatedCategory])
     }
 
     // MARK: - Sending Notifications
@@ -152,6 +178,12 @@ final class NotificationService: NSObject {
             userInfo["alertType"] = "aggregateCPU"
         case .highAggregateMemory:
             userInfo["alertType"] = "aggregateMemory"
+        case .orphanedProcess(let pid):
+            userInfo["pid"] = pid
+            userInfo["alertType"] = "orphaned"
+        case .outdatedProcess(let pid):
+            userInfo["pid"] = pid
+            userInfo["alertType"] = "outdated"
         }
         content.userInfo = userInfo
 

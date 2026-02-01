@@ -9,6 +9,10 @@
 #   -v, --verbose            Include additional process details
 #   -t, --tree               Show process tree
 #   -k, --kill-threshold N   Warn when CPU exceeds N%
+#   -K, --kill PID           Kill a Claude process (SIGTERM by default)
+#   -9, --force              Use SIGKILL instead of SIGTERM (with -K)
+#   --check-version          Check for Claude Code updates
+#   --upgrade                Upgrade Claude Code to latest version
 #   --uninstall-app          Remove all Claude Trace menu bar app installations
 #   -h, --help               Show this help message
 #
@@ -36,6 +40,13 @@ VERBOSE=false
 SHOW_TREE=false
 CPU_THRESHOLD=0
 MEM_THRESHOLD=0  # RSS threshold in MB (0 = disabled)
+KILL_PID=""
+FORCE_KILL=false
+CHECK_VERSION=false
+DO_UPGRADE=false
+
+# Claude paths
+CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
 
 usage() {
     cat << 'EOF'
@@ -51,6 +62,10 @@ OPTIONS:
     -t, --tree                Show process hierarchy tree
     -k, --kill-threshold N    Highlight processes exceeding N% CPU
     -m, --mem-threshold N     Highlight processes exceeding N MB RSS memory
+    -K, --kill PID            Kill a Claude process (SIGTERM by default)
+    -9, --force               Use SIGKILL instead of SIGTERM (with -K)
+    --check-version           Check if a newer Claude Code version is available
+    --upgrade                 Upgrade Claude Code to the latest version
     --uninstall-app           Remove all Claude Trace menu bar app installations
     -h, --help                Show this help message
 
@@ -61,6 +76,10 @@ EXAMPLES:
     claude-trace -v -k 50           # Verbose with 50% CPU warning threshold
     claude-trace -m 512             # Warn when RSS exceeds 512MB
     claude-trace -t                 # Show process tree
+    claude-trace -K 12345           # Kill process 12345 (SIGTERM)
+    claude-trace -K 12345 -9        # Force kill process 12345 (SIGKILL)
+    claude-trace --check-version    # Check for Claude Code updates
+    claude-trace --upgrade          # Upgrade to latest Claude Code
     claude-trace --uninstall-app    # Remove menu bar app installations
 
 OUTPUT FIELDS:
@@ -75,6 +94,11 @@ OUTPUT FIELDS:
     COMMAND  Process command/arguments
     CWD      Current working directory (with -v/--verbose)
     PROJECT  Project name derived from CWD (with -v/--verbose)
+    VERSION  Claude Code version (extracted from binary path)
+
+WARNINGS:
+    ORPHANED - Process running --claude-in-chrome-mcp without Claude Desktop
+    OUTDATED - Process running an older version of Claude Code
 EOF
 }
 
@@ -128,6 +152,177 @@ uninstall_app() {
     fi
 }
 
+# Get local installed Claude version (highest version number)
+get_local_version() {
+    if [[ -d "$CLAUDE_VERSIONS_DIR" ]]; then
+        ls -1 "$CLAUDE_VERSIONS_DIR" 2>/dev/null | sort -V | tail -1
+    else
+        echo ""
+    fi
+}
+
+# Get version from npm registry
+get_npm_version() {
+    if command -v npm &>/dev/null; then
+        npm view @anthropic-ai/claude-code version 2>/dev/null || echo ""
+    else
+        echo ""
+    fi
+}
+
+# Extract version from a process command line (from path like .local/share/claude/versions/X.Y.Z)
+extract_version_from_cmd() {
+    local cmd=$1
+    if [[ "$cmd" =~ \.local/share/claude/versions/([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+        echo "${BASH_REMATCH[1]}"
+    else
+        echo ""
+    fi
+}
+
+# Compare semver versions: returns 0 if v1 >= v2, 1 otherwise
+version_gte() {
+    local v1=$1 v2=$2
+    if [[ "$v1" == "$v2" ]]; then
+        return 0
+    fi
+    # Use sort -V to compare
+    local highest
+    highest=$(printf '%s\n%s' "$v1" "$v2" | sort -V | tail -1)
+    [[ "$highest" == "$v1" ]]
+}
+
+# Check if Claude Desktop app is running
+is_claude_desktop_running() {
+    pgrep -q "Claude" && pgrep -qf "Claude\.app" 2>/dev/null
+}
+
+# Check for orphaned MCP processes
+is_orphaned_mcp() {
+    local cmd=$1
+    if [[ "$cmd" =~ --claude-in-chrome-mcp ]]; then
+        if ! is_claude_desktop_running; then
+            return 0  # Is orphaned
+        fi
+    fi
+    return 1  # Not orphaned
+}
+
+# Kill a Claude process
+kill_claude_process() {
+    local pid=$1
+    local force=$2
+
+    # Verify it's a Claude process first
+    local cmd
+    cmd=$(ps -p "$pid" -o command= 2>/dev/null || true)
+    if [[ -z "$cmd" ]]; then
+        echo -e "${RED}Error: Process $pid not found${RESET}"
+        return 1
+    fi
+
+    if ! [[ "$cmd" =~ (claude|anthropic|\.local/share/claude) ]]; then
+        echo -e "${RED}Error: Process $pid is not a Claude process${RESET}"
+        echo -e "${DIM}Command: $cmd${RESET}"
+        return 1
+    fi
+
+    local signal="SIGTERM"
+    local signal_num=15
+    if $force; then
+        signal="SIGKILL"
+        signal_num=9
+    fi
+
+    echo -e "${YELLOW}Sending $signal to process $pid...${RESET}"
+    echo -e "${DIM}Command: ${cmd:0:80}...${RESET}"
+
+    if kill "-$signal_num" "$pid" 2>/dev/null; then
+        echo -e "${GREEN}✓ Process $pid terminated${RESET}"
+        return 0
+    else
+        echo -e "${RED}✗ Failed to kill process $pid${RESET}"
+        return 1
+    fi
+}
+
+# Check for Claude Code updates
+check_claude_version() {
+    echo -e "${BOLD}Checking Claude Code version...${RESET}\n"
+
+    local local_version npm_version
+
+    echo -e "${DIM}Fetching local version...${RESET}"
+    local_version=$(get_local_version)
+    if [[ -z "$local_version" ]]; then
+        echo -e "${RED}Error: Could not determine local Claude Code version${RESET}"
+        echo -e "${DIM}Expected versions at: $CLAUDE_VERSIONS_DIR${RESET}"
+        return 1
+    fi
+    echo -e "  Local version:  ${CYAN}$local_version${RESET}"
+
+    echo -e "${DIM}Fetching npm version...${RESET}"
+    npm_version=$(get_npm_version)
+    if [[ -z "$npm_version" ]]; then
+        echo -e "${YELLOW}Warning: Could not fetch npm version (network error or npm not installed)${RESET}"
+        return 1
+    fi
+    echo -e "  Latest version: ${CYAN}$npm_version${RESET}\n"
+
+    if [[ "$local_version" == "$npm_version" ]]; then
+        echo -e "${GREEN}✓ You are running the latest version of Claude Code${RESET}"
+        return 0
+    elif version_gte "$local_version" "$npm_version"; then
+        echo -e "${GREEN}✓ Your local version ($local_version) is newer than npm ($npm_version)${RESET}"
+        return 0
+    else
+        echo -e "${YELLOW}⚠ Update available: $local_version → $npm_version${RESET}"
+        echo -e "\n${BOLD}To upgrade, run:${RESET}"
+        echo -e "  ${CYAN}claude-trace --upgrade${RESET}"
+        echo -e "  ${DIM}or manually: npm install -g @anthropic-ai/claude-code${RESET}"
+        return 2
+    fi
+}
+
+# Upgrade Claude Code
+upgrade_claude() {
+    echo -e "${BOLD}Upgrading Claude Code...${RESET}\n"
+
+    # Check if npm is available
+    if ! command -v npm &>/dev/null; then
+        echo -e "${RED}Error: npm is not installed${RESET}"
+        echo -e "${DIM}Install Node.js/npm first: https://nodejs.org/${RESET}"
+        return 1
+    fi
+
+    local local_version npm_version
+    local_version=$(get_local_version)
+    npm_version=$(get_npm_version)
+
+    if [[ -z "$npm_version" ]]; then
+        echo -e "${RED}Error: Could not fetch latest version from npm${RESET}"
+        return 1
+    fi
+
+    if [[ "$local_version" == "$npm_version" ]]; then
+        echo -e "${GREEN}✓ Already running the latest version ($local_version)${RESET}"
+        return 0
+    fi
+
+    echo -e "Upgrading from ${YELLOW}$local_version${RESET} to ${GREEN}$npm_version${RESET}...\n"
+
+    # Run npm install
+    if npm install -g @anthropic-ai/claude-code; then
+        echo -e "\n${GREEN}✓ Claude Code upgraded successfully to $npm_version${RESET}"
+        echo -e "${DIM}Note: Restart any running Claude sessions to use the new version${RESET}"
+        return 0
+    else
+        echo -e "\n${RED}✗ Upgrade failed${RESET}"
+        echo -e "${DIM}Try running with sudo: sudo npm install -g @anthropic-ai/claude-code${RESET}"
+        return 1
+    fi
+}
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -159,6 +354,26 @@ while [[ $# -gt 0 ]]; do
             MEM_THRESHOLD=${2:-512}
             shift 2
             ;;
+        -K|--kill)
+            KILL_PID=${2:-}
+            if [[ -z "$KILL_PID" || ! "$KILL_PID" =~ ^[0-9]+$ ]]; then
+                echo "Error: -K/--kill requires a valid PID" >&2
+                exit 1
+            fi
+            shift 2
+            ;;
+        -9|--force)
+            FORCE_KILL=true
+            shift
+            ;;
+        --check-version)
+            CHECK_VERSION=true
+            shift
+            ;;
+        --upgrade)
+            DO_UPGRADE=true
+            shift
+            ;;
         --uninstall-app)
             uninstall_app
             exit 0
@@ -174,6 +389,24 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# Handle kill command
+if [[ -n "$KILL_PID" ]]; then
+    kill_claude_process "$KILL_PID" "$FORCE_KILL"
+    exit $?
+fi
+
+# Handle version check
+if $CHECK_VERSION; then
+    check_claude_version
+    exit $?
+fi
+
+# Handle upgrade
+if $DO_UPGRADE; then
+    upgrade_claude
+    exit $?
+fi
 
 # Detect OS
 detect_os() {
@@ -337,6 +570,18 @@ output_json() {
     local total_cpu=0
     local total_mem=0
     local total_rss=0
+    local orphaned_count=0
+    local outdated_count=0
+
+    # Get latest local version for comparison (cache it for the loop)
+    local latest_local_version
+    latest_local_version=$(get_local_version)
+
+    # Check if Claude Desktop is running (cache it for the loop)
+    local claude_desktop_running=false
+    if pgrep -qf "Claude\.app" 2>/dev/null; then
+        claude_desktop_running=true
+    fi
 
     while IFS= read -r pid; do
         [[ -z "$pid" ]] && continue
@@ -351,6 +596,24 @@ output_json() {
         total_mem=$(echo "$total_mem + $p_mem" | bc)
         total_rss=$((total_rss + p_rss))
 
+        # Extract version and check status
+        local version is_orphaned=false is_outdated=false
+        version=$(extract_version_from_cmd "$p_cmd")
+
+        # Check if orphaned
+        if [[ "$p_cmd" =~ --claude-in-chrome-mcp ]] && ! $claude_desktop_running; then
+            is_orphaned=true
+            ((orphaned_count++))
+        fi
+
+        # Check if outdated
+        if [[ -n "$version" && -n "$latest_local_version" && "$version" != "$latest_local_version" ]]; then
+            if ! version_gte "$version" "$latest_local_version"; then
+                is_outdated=true
+                ((outdated_count++))
+            fi
+        fi
+
         local proc_json
         proc_json=$(cat << PROC
 {
@@ -362,7 +625,10 @@ output_json() {
     "vsz_kb": $p_vsz,
     "state": "$p_state",
     "elapsed_time": "$p_time",
-    "command": "$(echo "$p_cmd" | sed 's/"/\\"/g' | head -c 200)"
+    "command": "$(echo "$p_cmd" | sed 's/"/\\"/g' | head -c 200)",
+    "version": "$(echo "$version" | sed 's/"/\\"/g')",
+    "is_orphaned": $is_orphaned,
+    "is_outdated": $is_outdated
 PROC
 )
         if $VERBOSE; then
@@ -401,7 +667,10 @@ PROC
   "hostname": "$(hostname)",
   "os": "$OS_TYPE",
   "os_version": "$(uname -r)",
+  "latest_local_version": "$latest_local_version",
   "process_count": ${#processes[@]},
+  "orphaned_count": $orphaned_count,
+  "outdated_count": $outdated_count,
   "totals": {
     "cpu_percent": $total_cpu,
     "mem_percent": $total_mem,
@@ -434,6 +703,9 @@ print_row() {
     local threads=${10:-}
     local cwd=${11:-}
     local project=${12:-}
+    local version=${13:-}
+    local is_orphaned=${14:-false}
+    local is_outdated=${15:-false}
 
     # Color coding based on CPU usage
     local cpu_color=""
@@ -461,16 +733,22 @@ print_row() {
     # Threshold warnings
     local warning=""
     if (( CPU_THRESHOLD > 0 && cpu_int >= CPU_THRESHOLD )); then
-        warning=" ${RED}⚠ CPU EXCEEDS THRESHOLD${RESET}"
+        warning=" ${RED}⚠ CPU${RESET}"
     fi
     # MEM_THRESHOLD is in MB, rss is in KB
     local mem_threshold_kb=$((MEM_THRESHOLD * 1024))
     if (( MEM_THRESHOLD > 0 && rss >= mem_threshold_kb )); then
-        if [[ -n "$warning" ]]; then
-            warning+=" ${RED}⚠ MEM EXCEEDS THRESHOLD${RESET}"
-        else
-            warning=" ${RED}⚠ MEM EXCEEDS THRESHOLD${RESET}"
-        fi
+        warning+=" ${RED}⚠ MEM${RESET}"
+    fi
+
+    # Orphaned process warning
+    if [[ "$is_orphaned" == "true" ]]; then
+        warning+=" ${YELLOW}⚠ ORPHANED${RESET}"
+    fi
+
+    # Outdated version warning
+    if [[ "$is_outdated" == "true" ]]; then
+        warning+=" ${YELLOW}⚠ OUTDATED${RESET}"
     fi
 
     local rss_human vsz_human
@@ -563,6 +841,8 @@ output_table() {
     local total_mem=0
     local total_rss=0
     local count=0
+    local orphaned_count=0
+    local outdated_count=0
 
     # Clear screen in watch mode
     $WATCH_MODE && clear
@@ -582,6 +862,16 @@ output_table() {
         return 0
     fi
 
+    # Get latest local version for comparison (cache it for the loop)
+    local latest_local_version
+    latest_local_version=$(get_local_version)
+
+    # Check if Claude Desktop is running (cache it for the loop)
+    local claude_desktop_running=false
+    if pgrep -qf "Claude\.app" 2>/dev/null; then
+        claude_desktop_running=true
+    fi
+
     print_header
 
     for pid in "${pids[@]}"; do
@@ -591,15 +881,35 @@ output_table() {
 
         read -r p_pid p_ppid p_cpu p_mem p_rss p_vsz p_state p_time p_cmd <<< "$info"
 
-        local threads="" cwd="" project=""
+        local threads="" cwd="" project="" version=""
+        local is_orphaned=false is_outdated=false
+
         # Always get cwd and project for display
         cwd=$(get_cwd "$p_pid")
         project=$(extract_project_from_command "$p_cmd" "$cwd")
+
+        # Extract version from command path
+        version=$(extract_version_from_cmd "$p_cmd")
+
+        # Check if orphaned (--claude-in-chrome-mcp without Claude Desktop)
+        if [[ "$p_cmd" =~ --claude-in-chrome-mcp ]] && ! $claude_desktop_running; then
+            is_orphaned=true
+            ((orphaned_count++))
+        fi
+
+        # Check if outdated (version older than latest local)
+        if [[ -n "$version" && -n "$latest_local_version" && "$version" != "$latest_local_version" ]]; then
+            if ! version_gte "$version" "$latest_local_version"; then
+                is_outdated=true
+                ((outdated_count++))
+            fi
+        fi
+
         if $VERBOSE; then
             threads=$(get_thread_count "$p_pid")
         fi
 
-        print_row "$p_pid" "$p_ppid" "$p_cpu" "$p_mem" "$p_rss" "$p_vsz" "$p_state" "$p_time" "$p_cmd" "$threads" "$cwd" "$project"
+        print_row "$p_pid" "$p_ppid" "$p_cpu" "$p_mem" "$p_rss" "$p_vsz" "$p_state" "$p_time" "$p_cmd" "$threads" "$cwd" "$project" "$version" "$is_orphaned" "$is_outdated"
 
         total_cpu=$(echo "$total_cpu + $p_cpu" | bc)
         total_mem=$(echo "$total_mem + $p_mem" | bc)
@@ -622,6 +932,18 @@ output_table() {
         rss_human=$(format_bytes "$total_rss")
         echo -e "\n${RED}⚠ WARNING: High aggregate memory usage (${rss_human})${RESET}"
         echo -e "${DIM}  Consider: Closing unused Claude sessions or restarting high-memory processes${RESET}"
+    fi
+
+    # Orphaned process warning
+    if (( orphaned_count > 0 )); then
+        echo -e "\n${YELLOW}⚠ ORPHANED: $orphaned_count process(es) running --claude-in-chrome-mcp without Claude Desktop${RESET}"
+        echo -e "${DIM}  These processes may be stale. Kill with: claude-trace -K <PID>${RESET}"
+    fi
+
+    # Outdated version warning
+    if (( outdated_count > 0 )); then
+        echo -e "\n${YELLOW}⚠ OUTDATED: $outdated_count process(es) running older Claude Code version (latest: $latest_local_version)${RESET}"
+        echo -e "${DIM}  Consider restarting these sessions to use the latest version${RESET}"
     fi
 
     # Show tree if requested

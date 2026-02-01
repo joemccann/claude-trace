@@ -38,6 +38,73 @@ claude-trace/
 | `claude-diagnose` | Rust | Deep analysis: stack sampling, FD analysis, DTrace tracing, flamegraphs |
 | `ClaudeTraceMenuBar` | Swift | Native macOS menu bar app with notifications |
 
+## Feature Parity Requirements
+
+**IMPORTANT**: The CLI (`cli/claude-trace`) and macOS menu bar app (`apps/ClaudeTraceMenuBar/`) must maintain feature parity. Any feature added to one must be implemented in the other.
+
+### System-Wide CLI Sync (CRITICAL)
+
+**WARNING**: There may be an older version of `claude-trace` installed at `/usr/local/bin/claude-trace`. The macOS app will use this outdated version if it exists, causing features to not work!
+
+**After modifying `cli/claude-trace`, ALWAYS update the system-wide installation:**
+
+```bash
+# Update the system-wide CLI
+sudo cp ./cli/claude-trace /usr/local/bin/claude-trace
+
+# Verify it was updated (check file size and date)
+ls -la /usr/local/bin/claude-trace
+ls -la ./cli/claude-trace
+```
+
+The macOS app searches for the CLI in this order:
+1. `~/dev/apps/ops/claude-trace/cli/claude-trace` (project path)
+2. Bundle-relative path (for development)
+3. `~/.local/bin/claude-trace`
+4. `/usr/local/bin/claude-trace`
+5. Falls back to `claude-trace` in PATH
+
+### Before Every Commit
+
+Run this checklist before committing changes:
+
+1. **Feature Parity Check**
+   - [ ] If CLI was modified, are equivalent changes made to the macOS app?
+   - [ ] If macOS app was modified, are equivalent changes made to the CLI?
+   - [ ] Do both tools produce consistent JSON output fields?
+
+2. **CLI Sync Check**
+   - [ ] If CLI was modified, update system-wide: `sudo cp ./cli/claude-trace /usr/local/bin/claude-trace`
+   - [ ] Verify versions match: compare `ls -la` output for both files
+
+3. **Build Verification**
+   - [ ] CLI runs without errors: `./cli/claude-trace --help`
+   - [ ] macOS app builds: `xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj -scheme ClaudeTraceMenuBar build`
+
+4. **Test Coverage**
+   - [ ] CLI tested: `./cli/claude-trace`, `./cli/claude-trace -j | jq .`, `./cli/claude-trace -v`
+   - [ ] New CLI flags tested with `--help` and actual usage
+   - [ ] macOS app tested manually or via Xcode tests
+
+5. **Documentation**
+   - [ ] README.md updated if user-facing features changed
+   - [ ] CLAUDE.md updated if architecture/conventions changed
+   - [ ] CLI `--help` output updated for new flags
+   - [ ] Output Fields table updated if JSON schema changed
+
+### Shared Data Contract
+
+The macOS app parses JSON from the CLI. When modifying JSON output:
+1. Update `output_json()` in `cli/claude-trace`
+2. Update `TraceOutput` and `ProcessInfo` structs in `ProcessMonitor.swift`
+3. Update any views that display the new data
+
+### Current JSON Fields (keep in sync)
+
+**TraceOutput**: `timestamp`, `hostname`, `os`, `os_version`, `latest_local_version`, `process_count`, `orphaned_count`, `outdated_count`, `totals`, `processes`
+
+**ProcessInfo**: `pid`, `ppid`, `cpu_percent`, `mem_percent`, `rss_kb`, `vsz_kb`, `state`, `elapsed_time`, `command`, `version`, `is_orphaned`, `is_outdated`, `open_files`, `threads`, `cwd`, `project`, `session_id`
+
 ## Build Commands
 
 ```bash
