@@ -3,35 +3,75 @@ export function JsonLd() {
     '@context': 'https://schema.org',
     '@graph': [
       {
+        '@type': 'Organization',
+        '@id': 'https://claude-trace.vercel.app/#organization',
+        name: 'Claude Trace',
+        url: 'https://claude-trace.vercel.app',
+        logo: {
+          '@type': 'ImageObject',
+          url: 'https://claude-trace.vercel.app/icon.png',
+        },
+        sameAs: ['https://github.com/joemccann/claude-trace'],
+        founder: {
+          '@type': 'Person',
+          name: 'Joe McCann',
+          url: 'https://github.com/joemccann',
+        },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': 'https://claude-trace.vercel.app/#website',
+        name: 'Claude Trace',
+        url: 'https://claude-trace.vercel.app',
+        description: 'Real-time CPU and memory monitoring for Claude Code CLI',
+        publisher: {
+          '@id': 'https://claude-trace.vercel.app/#organization',
+        },
+      },
+      {
         '@type': 'SoftwareApplication',
+        '@id': 'https://claude-trace.vercel.app/#software',
         name: 'Claude Trace',
         applicationCategory: 'DeveloperApplication',
-        operatingSystem: 'macOS',
+        operatingSystem: 'macOS 14.0+',
         description:
           'Real-time CPU and memory monitoring for Claude Code CLI. Native macOS menu bar app with instant visibility into every Claude process.',
         url: 'https://claude-trace.vercel.app',
         downloadUrl: 'https://github.com/joemccann/claude-trace',
-        softwareVersion: '1.10.0',
+        softwareVersion: '1.11.0',
+        softwareRequirements: 'macOS 14.0+ and Xcode 15.0+',
         author: {
-          '@type': 'Person',
-          name: 'Joe McCann',
-          url: 'https://github.com/joemccann',
+          '@id': 'https://claude-trace.vercel.app/#organization',
         },
         offers: {
           '@type': 'Offer',
           price: '0',
           priceCurrency: 'USD',
+          availability: 'https://schema.org/InStock',
         },
-        aggregateRating: {
-          '@type': 'AggregateRating',
-          ratingValue: '5',
-          ratingCount: '1',
-        },
-      },
-      {
-        '@type': 'WebSite',
-        name: 'Claude Trace',
-        url: 'https://claude-trace.vercel.app',
+        featureList: [
+          'Live CPU & Memory monitoring',
+          'Project name tracking per Claude session',
+          'Native macOS notifications with custom thresholds',
+          'One-click process termination',
+          'Orphan process detection and cleanup',
+          'Launch at login support',
+          'CLI with JSON output for scripting',
+          'Watch mode with live updates',
+        ],
+        screenshot: [
+          {
+            '@type': 'ImageObject',
+            url: 'https://claude-trace.vercel.app/menubar-dropdown.png',
+            caption:
+              'Claude Trace Menu Bar showing real-time CPU and memory monitoring',
+          },
+          {
+            '@type': 'ImageObject',
+            url: 'https://claude-trace.vercel.app/cli-output.png',
+            caption: 'Claude Trace CLI output showing process monitoring',
+          },
+        ],
       },
     ],
   }
