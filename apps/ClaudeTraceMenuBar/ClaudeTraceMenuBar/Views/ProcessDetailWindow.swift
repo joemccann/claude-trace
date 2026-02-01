@@ -6,6 +6,8 @@ struct ProcessDetailWindow: View {
     var cpuThreshold: Double = 80.0
     var memoryThresholdMB: Int = 1024
     var onRefresh: (() -> Void)?
+    var onKill: ((Int, Bool) -> Void)?  // (pid, force)
+    @State private var showKillConfirmation = false
 
     var body: some View {
         ScrollView {
@@ -90,14 +92,49 @@ struct ProcessDetailWindow: View {
 
             Spacer()
 
-            // Refresh button
-            if let onRefresh = onRefresh {
-                Button(action: onRefresh) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.title3)
+            // Action buttons
+            HStack(spacing: 8) {
+                // Refresh button
+                if let onRefresh = onRefresh {
+                    Button(action: onRefresh) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.bordered)
+                    .help("Refresh process data")
                 }
-                .buttonStyle(.bordered)
-                .help("Refresh process data")
+
+                // Kill button (SIGTERM)
+                if onKill != nil {
+                    Button(action: { onKill?(process.pid, false) }) {
+                        Image(systemName: "stop.circle")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.orange)
+                    .help("Terminate process (SIGTERM)")
+
+                    // Force kill button (SIGKILL)
+                    Button(action: { showKillConfirmation = true }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.red)
+                    .help("Force kill process (SIGKILL)")
+                    .confirmationDialog(
+                        "Force kill process \(process.pid)?",
+                        isPresented: $showKillConfirmation,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Force Kill", role: .destructive) {
+                            onKill?(process.pid, true)
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text("This will immediately terminate \(process.displayName) without cleanup.")
+                    }
+                }
             }
         }
     }

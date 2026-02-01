@@ -40,6 +40,14 @@ struct MenuBarView: View {
         }
         .padding(8)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            // Set up kill callback for detail window
+            ProcessDetailWindowController.shared.onKill = { pid, force in
+                Task {
+                    _ = await monitor.killProcess(pid: pid, force: force)
+                }
+            }
+        }
     }
 
     // MARK: - Alert Banner

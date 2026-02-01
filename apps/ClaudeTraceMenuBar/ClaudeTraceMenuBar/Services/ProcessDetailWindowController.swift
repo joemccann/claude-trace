@@ -23,6 +23,9 @@ final class ProcessDetailWindowController {
     /// Window autosave name for remembering frame between uses
     private let windowAutosaveName = "ProcessDetailWindowV2"
 
+    /// Kill callback - set this before showing window
+    var onKill: ((Int, Bool) -> Void)?
+
     // MARK: - Initialization
 
     private init() {}
@@ -68,7 +71,7 @@ final class ProcessDetailWindowController {
 
     private func createWindow(for process: ProcessInfo) {
         // Create the SwiftUI view
-        let detailView = ProcessDetailWindow(process: process)
+        let detailView = ProcessDetailWindow(process: process, onKill: onKill)
 
         // Create hosting controller
         let hosting = NSHostingController(rootView: detailView)
@@ -109,7 +112,7 @@ final class ProcessDetailWindowController {
 
     private func updateWindow(for process: ProcessInfo) {
         // Update the SwiftUI view with new process
-        let detailView = ProcessDetailWindow(process: process)
+        let detailView = ProcessDetailWindow(process: process, onKill: onKill)
         hostingController?.rootView = detailView
 
         // Update window title
