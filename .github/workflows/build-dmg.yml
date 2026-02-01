@@ -1,0 +1,90 @@
+name: Build DMG
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.13.1)'
+        required: false
+        default: ''
+
+jobs:
+  build-dmg:
+    name: Build macOS DMG
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+
+      - name: Get version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [ -n "${{ github.event.release.tag_name }}" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="dev-$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Build app archive
+        run: |
+          xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj \
+            -scheme ClaudeTraceMenuBar \
+            -configuration Release \
+            -archivePath build/ClaudeTrace.xcarchive \
+            archive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Export app from archive
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/ClaudeTrace.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist apps/ClaudeTraceMenuBar/ExportOptions.plist
+
+      - name: Create DMG
+        run: |
+          APP_NAME="Claude Trace"
+          DMG_NAME="ClaudeTrace-${{ steps.version.outputs.version }}"
+
+          # Create temporary directory for DMG contents
+          mkdir -p build/dmg
+          cp -R "build/export/${APP_NAME}.app" build/dmg/
+
+          # Create symbolic link to Applications folder
+          ln -s /Applications build/dmg/Applications
+
+          # Create DMG
+          hdiutil create -volname "$APP_NAME" \
+            -srcfolder build/dmg \
+            -ov -format UDZO \
+            "build/${DMG_NAME}.dmg"
+
+          echo "DMG created: build/${DMG_NAME}.dmg"
+          ls -la build/*.dmg
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClaudeTrace-${{ steps.version.outputs.version }}.dmg
+          path: build/*.dmg
+          retention-days: 30
+
+      - name: Upload to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/*.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
