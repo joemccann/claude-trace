@@ -16,7 +16,7 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://claude-trace.vercel.app'),
+  metadataBase: new URL('https://claude-trace.com'),
   alternates: {
     canonical: '/',
   },
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://claude-trace.vercel.app',
+    url: 'https://claude-trace.com',
     title: 'Claude Trace | Monitor Claude Code Performance',
     description: 'Your Claude Code is slow. Here\'s why. Real-time CPU and memory monitoring.',
     siteName: 'Claude Trace',

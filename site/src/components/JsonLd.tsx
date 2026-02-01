@@ -4,12 +4,12 @@ export function JsonLd() {
     '@graph': [
       {
         '@type': 'Organization',
-        '@id': 'https://claude-trace.vercel.app/#organization',
+        '@id': 'https://claude-trace.com/#organization',
         name: 'Claude Trace',
-        url: 'https://claude-trace.vercel.app',
+        url: 'https://claude-trace.com',
         logo: {
           '@type': 'ImageObject',
-          url: 'https://claude-trace.vercel.app/icon.png',
+          url: 'https://claude-trace.com/icon.png',
         },
         sameAs: ['https://github.com/joemccann/claude-trace'],
         founder: {
@@ -20,28 +20,28 @@ export function JsonLd() {
       },
       {
         '@type': 'WebSite',
-        '@id': 'https://claude-trace.vercel.app/#website',
+        '@id': 'https://claude-trace.com/#website',
         name: 'Claude Trace',
-        url: 'https://claude-trace.vercel.app',
+        url: 'https://claude-trace.com',
         description: 'Real-time CPU and memory monitoring for Claude Code CLI',
         publisher: {
-          '@id': 'https://claude-trace.vercel.app/#organization',
+          '@id': 'https://claude-trace.com/#organization',
         },
       },
       {
         '@type': 'SoftwareApplication',
-        '@id': 'https://claude-trace.vercel.app/#software',
+        '@id': 'https://claude-trace.com/#software',
         name: 'Claude Trace',
         applicationCategory: 'DeveloperApplication',
         operatingSystem: 'macOS 14.0+',
         description:
           'Real-time CPU and memory monitoring for Claude Code CLI. Native macOS menu bar app with instant visibility into every Claude process.',
-        url: 'https://claude-trace.vercel.app',
+        url: 'https://claude-trace.com',
         downloadUrl: 'https://github.com/joemccann/claude-trace',
         softwareVersion: '1.11.0',
         softwareRequirements: 'macOS 14.0+ and Xcode 15.0+',
         author: {
-          '@id': 'https://claude-trace.vercel.app/#organization',
+          '@id': 'https://claude-trace.com/#organization',
         },
         offers: {
           '@type': 'Offer',
@@ -62,13 +62,13 @@ export function JsonLd() {
         screenshot: [
           {
             '@type': 'ImageObject',
-            url: 'https://claude-trace.vercel.app/menubar-dropdown.png',
+            url: 'https://claude-trace.com/menubar-dropdown.png',
             caption:
               'Claude Trace Menu Bar showing real-time CPU and memory monitoring',
           },
           {
             '@type': 'ImageObject',
-            url: 'https://claude-trace.vercel.app/cli-output.png',
+            url: 'https://claude-trace.com/cli-output.png',
             caption: 'Claude Trace CLI output showing process monitoring',
           },
         ],

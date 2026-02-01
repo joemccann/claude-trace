@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export function Footer() {
   return (
     <footer className="py-16 px-6 border-t border-zinc-800">
@@ -35,6 +37,12 @@ export function Footer() {
           </div>
 
           <div className="flex items-center gap-6">
+            <Link
+              href="/guides"
+              className="text-sm text-text-muted hover:text-text-primary transition-colors"
+            >
+              Guides
+            </Link>
             <a
               href="https://github.com/joemccann/claude-trace"
               target="_blank"
