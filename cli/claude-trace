@@ -13,6 +13,7 @@
 #   -9, --force              Use SIGKILL instead of SIGTERM (with -K)
 #   --check-version          Check for Claude Code updates
 #   --upgrade                Upgrade Claude Code to latest version
+#   --install                Install/update claude-trace to /usr/local/bin
 #   --uninstall-app          Remove all Claude Trace menu bar app installations
 #   -h, --help               Show this help message
 #
@@ -66,6 +67,7 @@ OPTIONS:
     -9, --force               Use SIGKILL instead of SIGTERM (with -K)
     --check-version           Check if a newer Claude Code version is available
     --upgrade                 Upgrade Claude Code to the latest version
+    --install                 Install/update claude-trace to /usr/local/bin (requires sudo)
     --uninstall-app           Remove all Claude Trace menu bar app installations
     -h, --help                Show this help message
 
@@ -97,7 +99,7 @@ OUTPUT FIELDS:
     VERSION  Claude Code version (extracted from binary path)
 
 WARNINGS:
-    ORPHANED - Process running --claude-in-chrome-mcp without Claude Desktop
+    ORPHANED - Process whose parent died (PPID=1, adopted by launchd/init)
     OUTDATED - Process running an older version of Claude Code
 EOF
 }
@@ -152,6 +154,27 @@ uninstall_app() {
     fi
 }
 
+# Install/update claude-trace to /usr/local/bin
+install_cli() {
+    local script_path
+    script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+    local dest="/usr/local/bin/claude-trace"
+
+    echo -e "${BOLD}Installing claude-trace to $dest...${RESET}"
+
+    # Check if we have write permission (either directly or via sudo)
+    if [[ -w "/usr/local/bin" ]] || [[ $EUID -eq 0 ]]; then
+        cp "$script_path" "$dest" && chmod +x "$dest"
+        echo -e "${GREEN}✓ Installed successfully${RESET}"
+        echo -e "${DIM}Source: $script_path${RESET}"
+        echo -e "${DIM}Destination: $dest${RESET}"
+    else
+        echo -e "${RED}Error: Permission denied. Run with sudo:${RESET}"
+        echo -e "  ${CYAN}sudo $script_path --install${RESET}"
+        return 1
+    fi
+}
+
 # Get local installed Claude version (highest version number)
 get_local_version() {
     if [[ -d "$CLAUDE_VERSIONS_DIR" ]]; then
@@ -192,20 +215,11 @@ version_gte() {
     [[ "$highest" == "$v1" ]]
 }
 
-# Check if Claude Desktop app is running
-is_claude_desktop_running() {
-    pgrep -q "Claude" && pgrep -qf "Claude\.app" 2>/dev/null
-}
-
-# Check for orphaned MCP processes
-is_orphaned_mcp() {
-    local cmd=$1
-    if [[ "$cmd" =~ --claude-in-chrome-mcp ]]; then
-        if ! is_claude_desktop_running; then
-            return 0  # Is orphaned
-        fi
-    fi
-    return 1  # Not orphaned
+# Check if a process is orphaned (PPID == 1, adopted by launchd/init)
+# This happens when the parent process dies and the child is reparented to PID 1
+is_orphaned_process() {
+    local ppid=$1
+    [[ "$ppid" -eq 1 ]]
 }
 
 # Kill a Claude process
@@ -373,6 +387,10 @@ while [[ $# -gt 0 ]]; do
         --upgrade)
             DO_UPGRADE=true
             shift
+            ;;
+        --install)
+            install_cli
+            exit $?
             ;;
         --uninstall-app)
             uninstall_app
@@ -577,12 +595,6 @@ output_json() {
     local latest_local_version
     latest_local_version=$(get_local_version)
 
-    # Check if Claude Desktop is running (cache it for the loop)
-    local claude_desktop_running=false
-    if pgrep -qf "Claude\.app" 2>/dev/null; then
-        claude_desktop_running=true
-    fi
-
     while IFS= read -r pid; do
         [[ -z "$pid" ]] && continue
 
@@ -600,8 +612,8 @@ output_json() {
         local version is_orphaned=false is_outdated=false
         version=$(extract_version_from_cmd "$p_cmd")
 
-        # Check if orphaned
-        if [[ "$p_cmd" =~ --claude-in-chrome-mcp ]] && ! $claude_desktop_running; then
+        # Check if orphaned (PPID == 1 means adopted by launchd/init)
+        if is_orphaned_process "$p_ppid"; then
             is_orphaned=true
             ((orphaned_count++))
         fi
@@ -866,12 +878,6 @@ output_table() {
     local latest_local_version
     latest_local_version=$(get_local_version)
 
-    # Check if Claude Desktop is running (cache it for the loop)
-    local claude_desktop_running=false
-    if pgrep -qf "Claude\.app" 2>/dev/null; then
-        claude_desktop_running=true
-    fi
-
     print_header
 
     for pid in "${pids[@]}"; do
@@ -891,8 +897,8 @@ output_table() {
         # Extract version from command path
         version=$(extract_version_from_cmd "$p_cmd")
 
-        # Check if orphaned (--claude-in-chrome-mcp without Claude Desktop)
-        if [[ "$p_cmd" =~ --claude-in-chrome-mcp ]] && ! $claude_desktop_running; then
+        # Check if orphaned (PPID == 1 means adopted by launchd/init)
+        if is_orphaned_process "$p_ppid"; then
             is_orphaned=true
             ((orphaned_count++))
         fi
@@ -936,8 +942,8 @@ output_table() {
 
     # Orphaned process warning
     if (( orphaned_count > 0 )); then
-        echo -e "\n${YELLOW}⚠ ORPHANED: $orphaned_count process(es) running --claude-in-chrome-mcp without Claude Desktop${RESET}"
-        echo -e "${DIM}  These processes may be stale. Kill with: claude-trace -K <PID>${RESET}"
+        echo -e "\n${YELLOW}⚠ ORPHANED: $orphaned_count process(es) with PPID=1 (parent died)${RESET}"
+        echo -e "${DIM}  These processes are orphaned and may be stale. Kill with: claude-trace -K <PID>${RESET}"
     fi
 
     # Outdated version warning

@@ -9,6 +9,7 @@ struct ProcessRowView: View {
     var onKill: ((Int, Bool) -> Void)?  // Callback for kill action (pid, force)
     @State private var isExpanded = false
     @State private var isHoveringDetails = false
+    @State private var isHoveringRow = false
     @State private var showKillConfirmation = false
 
     var body: some View {
@@ -99,8 +100,23 @@ struct ProcessRowView: View {
                     .font(.system(.caption, design: .monospaced))
                     .foregroundStyle(memoryColor)
                     .frame(width: 50, alignment: .trailing)
+
+                // Kill button (visible on hover)
+                Button(action: {
+                    onKill?(process.pid, false)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(isHoveringRow ? .red.opacity(0.8) : .clear)
+                }
+                .buttonStyle(.plain)
+                .help("Terminate process (SIGTERM)")
+                .frame(width: 20)
             }
             .contentShape(Rectangle())
+            .onHover { hovering in
+                isHoveringRow = hovering
+            }
             .onTapGesture(count: 2) {
                 ProcessDetailWindowController.shared.showWindow(for: process)
             }

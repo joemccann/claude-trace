@@ -46,54 +46,21 @@ When aggregate CPU exceeds 100%, you'll get an instant warning with suggested di
 ## Installation
 
 ```bash
-# Clone the repository
+# Clone
 git clone https://github.com/joemccann/claude-trace.git ~/claude-trace
 cd ~/claude-trace
 
-# Build the Rust diagnostic tool
-cd cli && cargo build --release && cd ..
-
-# Add to PATH
-export PATH="$HOME/claude-trace/cli:$HOME/claude-trace/cli/target/release:$PATH"
-
-# Or install the binaries system-wide
-sudo cp cli/target/release/claude-diagnose /usr/local/bin/
-sudo cp cli/claude-trace /usr/local/bin/
-```
-
-## Project Structure
-
-```
-claude-trace/
-├── cli/                          # Command-line tools
-│   ├── claude-trace              # Bash script - real-time monitor
-│   ├── src/main.rs               # Rust binary source
-│   ├── Cargo.toml                # Rust dependencies
-│   └── target/release/
-│       └── claude-diagnose       # Compiled Rust binary
-├── apps/
-│   └── ClaudeTraceMenuBar/       # macOS SwiftUI menu bar app
-├── dev.sh                        # Development convenience script
-├── README.md
-└── CLAUDE.md                     # Project instructions for Claude Code
+# Deploy (builds and installs CLI + menu bar app)
+./dev.sh deploy
 ```
 
 ## Development
 
-A convenience script is provided for building and running all tools:
-
 ```bash
-./dev.sh              # Build CLI tools and show status
-./dev.sh build        # Build Rust binary only
-./dev.sh build-app    # Build the menu bar app (requires Xcode)
-./dev.sh build-all    # Build everything
-./dev.sh trace        # Run the Bash monitor (claude-trace)
-./dev.sh trace -v     # Run with verbose output
-./dev.sh diagnose     # Run the Rust diagnostics (claude-diagnose)
-./dev.sh watch 5      # Watch mode with 5s refresh
-./dev.sh run-app      # Build and launch the menu bar app
-./dev.sh install      # Build and install menu bar app to /Applications
-./dev.sh test         # Run tests and validate scripts
+./dev.sh              # Show status
+./dev.sh deploy       # Build CLI + app, install to /Applications
+./dev.sh trace        # Run claude-trace
+./dev.sh trace -v     # Verbose mode
 ./dev.sh clean        # Clean build artifacts
 ```
 
@@ -306,19 +273,6 @@ A native macOS menu bar application for always-on monitoring with desktop notifi
 - macOS 14.0 (Sonoma) or later
 - Xcode 15.0+ (for building)
 
-### Building the Menu Bar App
-
-```bash
-# Using the dev script
-./dev.sh build-app
-
-# Or using xcodebuild directly
-xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj -scheme ClaudeTraceMenuBar -configuration Release build
-
-# Run after building
-./dev.sh run-app
-```
-
 ### Settings
 
 | Setting | Default | Description |
@@ -401,27 +355,6 @@ while true; do
     done
     sleep $INTERVAL
 done
-```
-
-## Building from Source
-
-```bash
-# Prerequisites: Rust toolchain
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-
-# Option 1: Use the dev script
-./dev.sh build        # CLI tools only
-./dev.sh build-all    # CLI + menu bar app
-
-# Option 2: Build directly with cargo
-cd cli && cargo build --release
-
-# Option 3: Build menu bar app with xcodebuild
-xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj -scheme ClaudeTraceMenuBar -configuration Release build
-
-# Binaries are at:
-# - cli/target/release/claude-diagnose
-# - ~/Library/Developer/Xcode/DerivedData/ClaudeTraceMenuBar-*/Build/Products/Release/ClaudeTraceMenuBar.app
 ```
 
 ## Requirements

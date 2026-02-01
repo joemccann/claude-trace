@@ -5,6 +5,7 @@ struct MenuBarView: View {
     var sizeManager: PopoverSizeManager?
     @State private var showingSettings = false
     @State private var showingVersionCheck = false
+    @State private var showKillOrphanedConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -166,24 +167,76 @@ struct MenuBarView: View {
     // MARK: - Process List
 
     /// Computes disambiguators for processes with the same display name.
-    /// Returns a dictionary mapping PID to disambiguator string (e.g., "#1", "#2").
-    /// Only processes that share a display name with others get disambiguators.
+    /// Returns a dictionary mapping PID to disambiguator string.
+    /// - Main Claude processes get "#1", "#2", etc.
+    /// - Chrome MCP child processes get "#1-chrome" (matching their parent's number)
     private var processDisambiguators: [Int: String] {
         let processes = monitor.sortedProcesses
 
-        // Group by display name
+        // Build a map of PID -> ProcessInfo for quick lookup
+        let pidMap = Dictionary(uniqueKeysWithValues: processes.map { ($0.pid, $0) })
+
+        // Identify Chrome MCP processes and their parent PIDs
+        // Chrome MCP processes have --claude-in-chrome-mcp in their command
+        // and their PPID points to a main Claude process
+        var chromeMcpParents: [Int: Int] = [:]  // Chrome MCP PID -> Parent Claude PID
+        for process in processes {
+            if process.isMCPProcess {
+                // Check if parent is also a Claude process in our list
+                if pidMap[process.ppid] != nil {
+                    chromeMcpParents[process.pid] = process.ppid
+                }
+            }
+        }
+
+        // Group main processes (non-Chrome-MCP or Chrome-MCP without a Claude parent) by display name
         var nameGroups: [String: [ProcessInfo]] = [:]
         for process in processes {
+            // Skip Chrome MCP processes that have a parent in our process list
+            if chromeMcpParents[process.pid] != nil {
+                continue
+            }
             nameGroups[process.displayName, default: []].append(process)
         }
 
-        // Build disambiguator map only for names with multiple processes
+        // Build disambiguator map
         var disambiguators: [Int: String] = [:]
-        for (_, group) in nameGroups where group.count > 1 {
-            // Sort by PID for consistent numbering
-            let sorted = group.sorted { $0.pid < $1.pid }
-            for (index, process) in sorted.enumerated() {
-                disambiguators[process.pid] = "#\(index + 1)"
+
+        for (_, group) in nameGroups {
+            if group.count > 1 {
+                // Multiple main processes with same name - number them
+                let sorted = group.sorted { $0.pid < $1.pid }
+                for (index, process) in sorted.enumerated() {
+                    let number = index + 1
+                    disambiguators[process.pid] = "#\(number)"
+
+                    // Find any Chrome MCP children of this process and give them matching number
+                    for (chromePid, parentPid) in chromeMcpParents where parentPid == process.pid {
+                        disambiguators[chromePid] = "#\(number)-chrome"
+                    }
+                }
+            } else if group.count == 1 {
+                // Single main process - check if it has Chrome MCP children
+                let process = group[0]
+                let hasChromeMcpChild = chromeMcpParents.values.contains(process.pid)
+
+                if hasChromeMcpChild {
+                    // Don't add disambiguator to main process if it's the only one
+                    // Just mark the Chrome MCP child
+                    for (chromePid, parentPid) in chromeMcpParents where parentPid == process.pid {
+                        disambiguators[chromePid] = "chrome"
+                    }
+                }
+            }
+        }
+
+        // Handle Chrome MCP processes whose parent is NOT a Claude process in our list
+        // (e.g., standalone MCP or parent already exited)
+        for process in processes {
+            if process.isMCPProcess && chromeMcpParents[process.pid] == nil {
+                // This is a Chrome MCP without a known Claude parent
+                // Group it with other same-named processes normally
+                // (already handled above in nameGroups)
             }
         }
 
@@ -218,7 +271,7 @@ struct MenuBarView: View {
     // MARK: - Warnings Section
 
     private var warningsSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             if monitor.orphanedCount > 0 {
                 HStack(spacing: 6) {
                     Image(systemName: "exclamationmark.triangle.fill")
@@ -226,9 +279,29 @@ struct MenuBarView: View {
                     Text("\(monitor.orphanedCount) orphaned process\(monitor.orphanedCount == 1 ? "" : "es")")
                         .font(.caption)
                     Spacer()
-                    Text("MCP without Claude Desktop")
+                    Text("PPID=1")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
+                    Button("Kill All") {
+                        showKillOrphanedConfirmation = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .tint(.orange)
+                }
+                .confirmationDialog(
+                    "Kill all orphaned processes?",
+                    isPresented: $showKillOrphanedConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Kill \(monitor.orphanedCount) Process\(monitor.orphanedCount == 1 ? "" : "es")", role: .destructive) {
+                        Task {
+                            _ = await monitor.killAllOrphaned()
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("This will terminate \(monitor.orphanedCount) orphaned process\(monitor.orphanedCount == 1 ? "" : "es") whose parent has died.")
                 }
             }
 
@@ -244,6 +317,15 @@ struct MenuBarView: View {
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
+                    Button("Upgrade") {
+                        showingVersionCheck = true
+                        Task {
+                            await monitor.checkForUpdates()
+                        }
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+                    .tint(.blue)
                 }
             }
         }

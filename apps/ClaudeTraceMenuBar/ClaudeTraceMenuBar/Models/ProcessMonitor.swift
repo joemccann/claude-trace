@@ -424,8 +424,8 @@ final class ProcessMonitor {
             if process.orphaned {
                 notificationService.sendNotification(
                     type: .orphanedProcess(pid: process.pid),
-                    title: "Orphaned MCP Process",
-                    body: "\(process.displayName) (PID \(process.pid)) is running without Claude Desktop",
+                    title: "Orphaned Process",
+                    body: "\(process.displayName) (PID \(process.pid)) has PPID=1 (parent died)",
                     processName: process.displayName
                 )
             }
@@ -582,6 +582,29 @@ extension ProcessMonitor {
                 }
             }
         }
+    }
+
+    /// Kill all orphaned processes
+    @MainActor
+    func killAllOrphaned(force: Bool = false) async -> Int {
+        let orphanedPids = processes.filter { $0.orphaned }.map { $0.pid }
+        var killed = 0
+        for pid in orphanedPids {
+            if await killProcess(pid: pid, force: force) {
+                killed += 1
+            }
+        }
+        return killed
+    }
+
+    /// Get all orphaned processes
+    var orphanedProcesses: [ProcessInfo] {
+        processes.filter { $0.orphaned }
+    }
+
+    /// Get all outdated processes
+    var outdatedProcesses: [ProcessInfo] {
+        processes.filter { $0.outdated }
     }
 }
 
