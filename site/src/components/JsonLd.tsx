@@ -9,7 +9,9 @@ export function JsonLd() {
         url: 'https://claude-trace.com',
         logo: {
           '@type': 'ImageObject',
-          url: 'https://claude-trace.com/icon.png',
+          url: 'https://claude-trace.com/icon',
+          width: 32,
+          height: 32,
         },
         sameAs: ['https://github.com/joemccann/claude-trace'],
         founder: {
