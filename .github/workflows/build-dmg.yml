@@ -88,9 +88,10 @@ jobs:
           retention-days: 30
 
       - name: Upload to release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.version.outputs.version }}
           files: build/*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
