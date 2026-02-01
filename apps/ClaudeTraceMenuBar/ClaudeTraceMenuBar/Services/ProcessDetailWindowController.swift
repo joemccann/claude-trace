@@ -98,7 +98,7 @@ final class ProcessDetailWindowController {
 
         // Create window with standard chrome - use popover-aligned dimensions
         let newWindow = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
@@ -107,15 +107,15 @@ final class ProcessDetailWindowController {
         // Configure window
         newWindow.title = "Process Details - \(process.displayName) (PID \(String(process.pid)))"
         newWindow.contentViewController = hosting
-        newWindow.minSize = NSSize(width: 400, height: 450)
-        newWindow.maxSize = NSSize(width: 800, height: 1000)
+        newWindow.minSize = NSSize(width: 400, height: 500)
+        newWindow.maxSize = NSSize(width: 800, height: 1200)
 
         // Set window level to floating but not always on top
         newWindow.level = .normal
         newWindow.isReleasedWhenClosed = false
 
         // Always use fixed size and center
-        newWindow.setContentSize(NSSize(width: 520, height: 600))
+        newWindow.setContentSize(NSSize(width: 520, height: 720))
         newWindow.center()
 
         // Set up close notification to clean up

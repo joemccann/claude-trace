@@ -16,6 +16,12 @@ struct ProcessDetailWindow: View {
                 // Header
                 headerSection
 
+                // Related Process Section (if applicable) - shown early for visibility
+                if relatedProcess != nil || process.isChromeMcpChild {
+                    Divider()
+                    relatedProcessSection
+                }
+
                 Divider()
 
                 // Command Section
@@ -35,12 +41,6 @@ struct ProcessDetailWindow: View {
 
                 // Process Info Section
                 processInfoSection
-
-                // Related Process Section (if applicable)
-                if relatedProcess != nil || process.isChromeMcpChild {
-                    Divider()
-                    relatedProcessSection
-                }
             }
             .padding(20)
         }
