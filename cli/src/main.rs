@@ -234,9 +234,7 @@ struct DiagnosticReport {
 
 /// Run a command and return (success, stdout, stderr)
 fn run_cmd(cmd: &str, args: &[&str]) -> (bool, String, String) {
-    let result = Command::new(cmd)
-        .args(args)
-        .output();
+    let result = Command::new(cmd).args(args).output();
 
     match result {
         Ok(output) => (
@@ -273,7 +271,8 @@ fn get_claude_pids_filtered(target_pid: Option<u32>) -> Vec<ProcessInfo> {
     //   - ".local/share/claude/" - Claude's Node.js runtime
     //   - "/anthropic/" in path
     // Does NOT match apps with "claude" only in arguments (e.g., workspace paths)
-    let claude_pattern = Regex::new(r"(^claude(\s|$)|/claude\s|\.local/share/claude/|/anthropic/)").unwrap();
+    let claude_pattern =
+        Regex::new(r"(^claude(\s|$)|/claude\s|\.local/share/claude/|/anthropic/)").unwrap();
     let exclude_pattern = Regex::new(r"(grep|claude-trace|claude-diagnose)").unwrap();
 
     for line in stdout.lines().skip(1) {
@@ -420,14 +419,17 @@ fn sample_process(pid: u32, duration: u32) -> SampleResult {
 
     for line in content.lines() {
         if let Some(caps) = func_pattern.captures(line) {
-            let count: u32 = caps.get(1)
+            let count: u32 = caps
+                .get(1)
                 .and_then(|m| m.as_str().parse().ok())
                 .unwrap_or(0);
             let func_name = caps.get(2).map(|m| m.as_str()).unwrap_or("");
             let module = caps.get(3).map(|m| m.as_str()).unwrap_or("");
 
             // Skip very short names and common uninteresting functions
-            if func_name.len() > 2 && !["start", "main", "thread_start", "_pthread_start"].contains(&func_name) {
+            if func_name.len() > 2
+                && !["start", "main", "thread_start", "_pthread_start"].contains(&func_name)
+            {
                 let key = if module.starts_with("libsystem_") || module.starts_with("libdyld") {
                     // For system calls, just use the function name
                     func_name.to_string()
@@ -474,7 +476,10 @@ fn sample_process(pid: u32, duration: u32) -> SampleResult {
         });
     }
 
-    if content.contains("GCRuntime") || content.contains("Scavenge") || content.contains("MarkCompact") {
+    if content.contains("GCRuntime")
+        || content.contains("Scavenge")
+        || content.contains("MarkCompact")
+    {
         result.diagnosis.push(Diagnosis {
             issue: "Garbage Collection Pressure".to_string(),
             severity: "medium".to_string(),
@@ -507,7 +512,11 @@ fn sample_process(pid: u32, duration: u32) -> SampleResult {
 
 /// Analyze file descriptors using lsof
 fn analyze_file_descriptors(pid: u32) -> FdResult {
-    eprintln!("{} Analyzing file descriptors for PID {}...", "→".cyan(), pid);
+    eprintln!(
+        "{} Analyzing file descriptors for PID {}...",
+        "→".cyan(),
+        pid
+    );
 
     let (success, stdout, stderr) = run_cmd("lsof", &["-p", &pid.to_string()]);
 
@@ -549,7 +558,8 @@ fn analyze_file_descriptors(pid: u32) -> FdResult {
         }
 
         // Detect network connections
-        if *fd_type == "IPv4" || *fd_type == "IPv6" || line.contains("TCP") || line.contains("UDP") {
+        if *fd_type == "IPv4" || *fd_type == "IPv6" || line.contains("TCP") || line.contains("UDP")
+        {
             result.network_connections.push(NetworkConnection {
                 conn_type: fd_type.to_string(),
                 connection: name.to_string(),
@@ -591,9 +601,7 @@ fn analyze_file_descriptors(pid: u32) -> FdResult {
 /// Check if DTrace/dtruss is available and not blocked by SIP
 fn check_dtrace_available() -> (bool, Option<String>) {
     // Try running dtruss with a quick test
-    let result = Command::new("sudo")
-        .args(["-n", "dtruss", "-h"])
-        .output();
+    let result = Command::new("sudo").args(["-n", "dtruss", "-h"]).output();
 
     match result {
         Ok(output) => {
@@ -602,7 +610,13 @@ fn check_dtrace_available() -> (bool, Option<String>) {
                 return (false, Some("System Integrity Protection (SIP) is blocking DTrace. Disable SIP or use fallback tools.".to_string()));
             }
             if !output.status.success() && stderr.contains("sudo") {
-                return (false, Some("sudo access required for dtruss. Run with sudo or configure sudoers.".to_string()));
+                return (
+                    false,
+                    Some(
+                        "sudo access required for dtruss. Run with sudo or configure sudoers."
+                            .to_string(),
+                    ),
+                );
             }
             (true, None)
         }
@@ -612,7 +626,12 @@ fn check_dtrace_available() -> (bool, Option<String>) {
 
 /// Run dtruss for general syscall tracing
 fn run_dtruss(pid: u32, duration: u32) -> (bool, String, String) {
-    eprintln!("{} Running dtruss on PID {} for {}s...", "→".cyan(), pid, duration);
+    eprintln!(
+        "{} Running dtruss on PID {} for {}s...",
+        "→".cyan(),
+        pid,
+        duration
+    );
 
     // Use timeout to limit dtruss duration
     let result = Command::new("sudo")
@@ -644,13 +663,18 @@ fn parse_dtruss_output(output: &str) -> Vec<SyscallEntry> {
 
     // dtruss format: "SYSCALL(args) = result  time_us"
     // or with -e: "SYSCALL(args) Err#N time_us"
-    let syscall_pattern = Regex::new(r"^\s*(\w+)\([^)]*\)\s*=?\s*(-?\d+|Err#\d+)?\s+(\d+)?").unwrap();
+    let syscall_pattern =
+        Regex::new(r"^\s*(\w+)\([^)]*\)\s*=?\s*(-?\d+|Err#\d+)?\s+(\d+)?").unwrap();
 
     for line in output.lines() {
         if let Some(caps) = syscall_pattern.captures(line) {
-            let syscall = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let syscall = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             let result = caps.get(2).map(|m| m.as_str()).unwrap_or("0");
-            let time_us = caps.get(3)
+            let time_us = caps
+                .get(3)
                 .and_then(|m| m.as_str().parse::<u64>().ok())
                 .unwrap_or(0);
 
@@ -671,7 +695,11 @@ fn parse_dtruss_output(output: &str) -> Vec<SyscallEntry> {
             name,
             count,
             total_time_us: total_time,
-            avg_time_us: if count > 0 { total_time as f64 / count as f64 } else { 0.0 },
+            avg_time_us: if count > 0 {
+                total_time as f64 / count as f64
+            } else {
+                0.0
+            },
             errors,
         })
         .collect();
@@ -684,19 +712,25 @@ fn parse_dtruss_output(output: &str) -> Vec<SyscallEntry> {
 /// Extract I/O operations from dtruss output
 fn extract_io_operations(output: &str) -> Vec<IoOperation> {
     let mut ops = Vec::new();
-    let io_syscalls = ["read", "write", "pread", "pwrite", "open", "close", "stat", "fstat", "lstat"];
+    let io_syscalls = [
+        "read", "write", "pread", "pwrite", "open", "close", "stat", "fstat", "lstat",
+    ];
 
     // Pattern: syscall(fd, ...) = bytes time_us
     let io_pattern = Regex::new(r"^\s*(read|write|pread|pwrite|open|close|stat|fstat|lstat)\((\d+|0x[0-9a-f]+)?,?\s*([^)]*)\)\s*=\s*(-?\d+)\s+(\d+)").unwrap();
 
     for line in output.lines() {
         if let Some(caps) = io_pattern.captures(line) {
-            let syscall = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let syscall = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             if !io_syscalls.contains(&syscall.as_str()) {
                 continue;
             }
 
-            let fd = caps.get(2)
+            let fd = caps
+                .get(2)
                 .and_then(|m| {
                     let s = m.as_str();
                     if s.starts_with("0x") {
@@ -707,23 +741,28 @@ fn extract_io_operations(output: &str) -> Vec<IoOperation> {
                 })
                 .unwrap_or(-1);
 
-            let path = caps.get(3).map(|m| {
-                let s = m.as_str();
-                // Extract quoted path if present
-                if let Some(start) = s.find('"') {
-                    if let Some(end) = s[start+1..].find('"') {
-                        return s[start+1..start+1+end].to_string();
+            let path = caps
+                .get(3)
+                .map(|m| {
+                    let s = m.as_str();
+                    // Extract quoted path if present
+                    if let Some(start) = s.find('"') {
+                        if let Some(end) = s[start + 1..].find('"') {
+                            return s[start + 1..start + 1 + end].to_string();
+                        }
                     }
-                }
-                String::new()
-            }).filter(|s| !s.is_empty());
+                    String::new()
+                })
+                .filter(|s| !s.is_empty());
 
-            let bytes = caps.get(4)
+            let bytes = caps
+                .get(4)
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .map(|b| if b < 0 { 0 } else { b as u64 })
                 .unwrap_or(0);
 
-            let latency = caps.get(5)
+            let latency = caps
+                .get(5)
                 .and_then(|m| m.as_str().parse::<u64>().ok())
                 .unwrap_or(0);
 
@@ -743,18 +782,25 @@ fn extract_io_operations(output: &str) -> Vec<IoOperation> {
 /// Extract network operations from dtruss output
 fn extract_network_operations(output: &str) -> Vec<NetworkOperation> {
     let mut ops = Vec::new();
-    let net_syscalls = ["socket", "connect", "bind", "listen", "accept", "send", "recv", "sendto", "recvfrom", "sendmsg", "recvmsg"];
+    let net_syscalls = [
+        "socket", "connect", "bind", "listen", "accept", "send", "recv", "sendto", "recvfrom",
+        "sendmsg", "recvmsg",
+    ];
 
     let net_pattern = Regex::new(r"^\s*(socket|connect|bind|listen|accept|send|recv|sendto|recvfrom|sendmsg|recvmsg)\((\d+)?,?\s*([^)]*)\)\s*=\s*(-?\d+)\s+(\d+)").unwrap();
 
     for line in output.lines() {
         if let Some(caps) = net_pattern.captures(line) {
-            let syscall = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let syscall = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             if !net_syscalls.contains(&syscall.as_str()) {
                 continue;
             }
 
-            let fd = caps.get(2)
+            let fd = caps
+                .get(2)
                 .and_then(|m| m.as_str().parse::<i32>().ok())
                 .unwrap_or(-1);
 
@@ -763,12 +809,14 @@ fn extract_network_operations(output: &str) -> Vec<NetworkOperation> {
             // Try to extract address/port from sockaddr
             let (address, port) = extract_sockaddr(args);
 
-            let bytes = caps.get(4)
+            let bytes = caps
+                .get(4)
                 .and_then(|m| m.as_str().parse::<i64>().ok())
                 .map(|b| if b < 0 { 0 } else { b as u64 })
                 .unwrap_or(0);
 
-            let latency = caps.get(5)
+            let latency = caps
+                .get(5)
                 .and_then(|m| m.as_str().parse::<u64>().ok())
                 .unwrap_or(0);
 
@@ -800,7 +848,12 @@ fn extract_sockaddr(args: &str) -> (Option<String>, Option<u16>) {
 
 /// Run fs_usage as a fallback when DTrace is unavailable
 fn run_fs_usage_fallback(pid: u32, duration: u32) -> (bool, String, String) {
-    eprintln!("{} Running fs_usage fallback for PID {} for {}s...", "→".yellow(), pid, duration);
+    eprintln!(
+        "{} Running fs_usage fallback for PID {} for {}s...",
+        "→".yellow(),
+        pid,
+        duration
+    );
 
     let result = Command::new("sudo")
         .args([
@@ -808,7 +861,8 @@ fn run_fs_usage_fallback(pid: u32, duration: u32) -> (bool, String, String) {
             &format!("{}s", duration),
             "fs_usage",
             "-w",
-            "-f", "filesys",
+            "-f",
+            "filesys",
             &pid.to_string(),
         ])
         .output();
@@ -833,7 +887,10 @@ fn parse_fs_usage_output(output: &str) -> Vec<IoOperation> {
 
     for line in output.lines() {
         if let Some(caps) = fs_pattern.captures(line) {
-            let syscall = caps.get(1).map(|m| m.as_str().to_string()).unwrap_or_default();
+            let syscall = caps
+                .get(1)
+                .map(|m| m.as_str().to_string())
+                .unwrap_or_default();
             let path = caps.get(2).map(|m| m.as_str().trim().to_string());
 
             ops.push(IoOperation {
@@ -914,8 +971,10 @@ fn trace_process(pid: u32, duration: u32, mode: DtraceMode) -> DtraceResult {
             result.issues.push(Diagnosis {
                 issue: "Using Fallback Tracing".to_string(),
                 severity: "low".to_string(),
-                description: "DTrace unavailable, using fs_usage for limited file system tracing".to_string(),
-                remedy: "Disable SIP or run with appropriate privileges for full DTrace support".to_string(),
+                description: "DTrace unavailable, using fs_usage for limited file system tracing"
+                    .to_string(),
+                remedy: "Disable SIP or run with appropriate privileges for full DTrace support"
+                    .to_string(),
             });
         } else {
             result.error = Some(stderr);
@@ -928,8 +987,12 @@ fn trace_process(pid: u32, duration: u32, mode: DtraceMode) -> DtraceResult {
 /// Analyze DTrace results for common issues
 fn analyze_dtrace_issues(result: &mut DtraceResult) {
     // Check for excessive polling
-    let poll_count: u32 = result.syscall_summary.iter()
-        .filter(|s| s.name == "poll" || s.name == "select" || s.name == "kevent" || s.name == "kevent64")
+    let poll_count: u32 = result
+        .syscall_summary
+        .iter()
+        .filter(|s| {
+            s.name == "poll" || s.name == "select" || s.name == "kevent" || s.name == "kevent64"
+        })
         .map(|s| s.count)
         .sum();
 
@@ -937,13 +1000,18 @@ fn analyze_dtrace_issues(result: &mut DtraceResult) {
         result.issues.push(Diagnosis {
             issue: "Excessive Event Polling".to_string(),
             severity: "high".to_string(),
-            description: format!("{} poll/select/kevent calls detected - event loop may be spinning", poll_count),
+            description: format!(
+                "{} poll/select/kevent calls detected - event loop may be spinning",
+                poll_count
+            ),
             remedy: "Check for busy-wait loops or misconfigured event handlers".to_string(),
         });
     }
 
     // Check for high I/O error rate
-    let io_errors: u32 = result.syscall_summary.iter()
+    let io_errors: u32 = result
+        .syscall_summary
+        .iter()
         .filter(|s| ["read", "write", "open", "stat"].contains(&s.name.as_str()))
         .map(|s| s.errors)
         .sum();
@@ -963,15 +1031,23 @@ fn analyze_dtrace_issues(result: &mut DtraceResult) {
             result.issues.push(Diagnosis {
                 issue: format!("Slow {} syscalls", syscall.name),
                 severity: "medium".to_string(),
-                description: format!("Average time: {:.1}ms across {} calls", syscall.avg_time_us / 1000.0, syscall.count),
+                description: format!(
+                    "Average time: {:.1}ms across {} calls",
+                    syscall.avg_time_us / 1000.0,
+                    syscall.count
+                ),
                 remedy: "Investigate blocking operations or resource contention".to_string(),
             });
         }
     }
 
     // Check for excessive file operations
-    let file_ops: u32 = result.syscall_summary.iter()
-        .filter(|s| ["open", "close", "stat", "fstat", "lstat", "access"].contains(&s.name.as_str()))
+    let file_ops: u32 = result
+        .syscall_summary
+        .iter()
+        .filter(|s| {
+            ["open", "close", "stat", "fstat", "lstat", "access"].contains(&s.name.as_str())
+        })
         .map(|s| s.count)
         .sum();
 
@@ -1093,12 +1169,14 @@ fn generate_report(processes: &[ProcessInfo], args: &Args) -> DiagnosticReport {
                 let sample_result = sample_process(proc.pid, args.sample_duration);
                 for diag in &sample_result.diagnosis {
                     match diag.severity.as_str() {
-                        "high" => report.summary.critical_issues.push(
-                            format!("PID {}: {}", proc.pid, diag.issue)
-                        ),
-                        "medium" => report.summary.warnings.push(
-                            format!("PID {}: {}", proc.pid, diag.issue)
-                        ),
+                        "high" => report
+                            .summary
+                            .critical_issues
+                            .push(format!("PID {}: {}", proc.pid, diag.issue)),
+                        "medium" => report
+                            .summary
+                            .warnings
+                            .push(format!("PID {}: {}", proc.pid, diag.issue)),
                         _ => {}
                     }
                 }
@@ -1108,9 +1186,10 @@ fn generate_report(processes: &[ProcessInfo], args: &Args) -> DiagnosticReport {
             let fd_result = analyze_file_descriptors(proc.pid);
             for issue in &fd_result.issues {
                 if issue.severity == "high" {
-                    report.summary.critical_issues.push(
-                        format!("PID {}: {}", proc.pid, issue.issue)
-                    );
+                    report
+                        .summary
+                        .critical_issues
+                        .push(format!("PID {}: {}", proc.pid, issue.issue));
                 }
             }
             proc_report.file_descriptors = Some(fd_result);
@@ -1122,12 +1201,14 @@ fn generate_report(processes: &[ProcessInfo], args: &Args) -> DiagnosticReport {
 
             for issue in &dtrace_result.issues {
                 match issue.severity.as_str() {
-                    "high" => report.summary.critical_issues.push(
-                        format!("PID {}: {}", proc.pid, issue.issue)
-                    ),
-                    "medium" => report.summary.warnings.push(
-                        format!("PID {}: {}", proc.pid, issue.issue)
-                    ),
+                    "high" => report
+                        .summary
+                        .critical_issues
+                        .push(format!("PID {}: {}", proc.pid, issue.issue)),
+                    "medium" => report
+                        .summary
+                        .warnings
+                        .push(format!("PID {}: {}", proc.pid, issue.issue)),
                     _ => {}
                 }
             }
@@ -1154,9 +1235,10 @@ fn generate_report(processes: &[ProcessInfo], args: &Args) -> DiagnosticReport {
 
     // Overall health assessment
     if report.summary.total_cpu > 100.0 {
-        report.summary.critical_issues.push(
-            format!("Aggregate CPU usage ({:.1}%) exceeds single core", report.summary.total_cpu)
-        );
+        report.summary.critical_issues.push(format!(
+            "Aggregate CPU usage ({:.1}%) exceeds single core",
+            report.summary.total_cpu
+        ));
     }
 
     report
@@ -1171,20 +1253,27 @@ fn generate_flamegraph(dtrace: &DtraceResult, output_path: &str) -> Result<Strin
     for syscall in &dtrace.syscall_summary {
         let category = categorize_syscall(&syscall.name);
         // Format: category;syscall count
-        let line = format!("claude-process;{};{} {}", category, syscall.name, syscall.count);
+        let line = format!(
+            "claude-process;{};{} {}",
+            category, syscall.name, syscall.count
+        );
         folded_lines.push(line);
     }
 
     // Add I/O operations if present
     for op in &dtrace.io_operations {
-        let path_part = op.path.as_ref().map(|p| {
-            // Truncate long paths
-            if p.len() > 30 {
-                format!("...{}", &p[p.len()-27..])
-            } else {
-                p.clone()
-            }
-        }).unwrap_or_else(|| format!("fd:{}", op.fd));
+        let path_part = op
+            .path
+            .as_ref()
+            .map(|p| {
+                // Truncate long paths
+                if p.len() > 30 {
+                    format!("...{}", &p[p.len() - 27..])
+                } else {
+                    p.clone()
+                }
+            })
+            .unwrap_or_else(|| format!("fd:{}", op.fd));
         folded_lines.push(format!("claude-process;io;{};{} 1", op.syscall, path_part));
     }
 
@@ -1204,7 +1293,10 @@ fn generate_flamegraph(dtrace: &DtraceResult, output_path: &str) -> Result<Strin
 
     // Generate SVG using inferno
     let mut options = FlamegraphOptions::default();
-    options.title = format!("Claude Process Syscalls - PID {} ({}s)", dtrace.pid, dtrace.duration_secs);
+    options.title = format!(
+        "Claude Process Syscalls - PID {} ({}s)",
+        dtrace.pid, dtrace.duration_secs
+    );
     options.subtitle = Some(format!("Method: {}", dtrace.method));
     options.count_name = "calls".to_string();
     options.colors = flamegraph::color::Palette::Basic(flamegraph::color::BasicPalette::Mem);
@@ -1221,21 +1313,21 @@ fn generate_flamegraph(dtrace: &DtraceResult, output_path: &str) -> Result<Strin
 fn categorize_syscall(name: &str) -> &'static str {
     match name {
         // File operations
-        "open" | "openat" | "close" | "read" | "write" | "pread" | "pwrite" |
-        "stat" | "fstat" | "lstat" | "access" | "unlink" | "rename" | "mkdir" |
-        "rmdir" | "readdir" | "getdirentries" | "fsync" | "ftruncate" => "file",
+        "open" | "openat" | "close" | "read" | "write" | "pread" | "pwrite" | "stat" | "fstat"
+        | "lstat" | "access" | "unlink" | "rename" | "mkdir" | "rmdir" | "readdir"
+        | "getdirentries" | "fsync" | "ftruncate" => "file",
 
         // Network operations
-        "socket" | "connect" | "bind" | "listen" | "accept" | "send" | "recv" |
-        "sendto" | "recvfrom" | "sendmsg" | "recvmsg" | "shutdown" | "getsockopt" |
-        "setsockopt" | "getpeername" | "getsockname" => "network",
+        "socket" | "connect" | "bind" | "listen" | "accept" | "send" | "recv" | "sendto"
+        | "recvfrom" | "sendmsg" | "recvmsg" | "shutdown" | "getsockopt" | "setsockopt"
+        | "getpeername" | "getsockname" => "network",
 
         // Memory operations
         "mmap" | "munmap" | "mprotect" | "madvise" | "brk" | "sbrk" => "memory",
 
         // Process/thread operations
-        "fork" | "vfork" | "clone" | "execve" | "exit" | "wait4" | "waitpid" |
-        "kill" | "sigaction" | "sigprocmask" | "pthread_create" => "process",
+        "fork" | "vfork" | "clone" | "execve" | "exit" | "wait4" | "waitpid" | "kill"
+        | "sigaction" | "sigprocmask" | "pthread_create" => "process",
 
         // Event/polling operations
         "poll" | "select" | "kevent" | "kevent64" | "epoll_wait" | "kqueue" => "event",
@@ -1253,11 +1345,23 @@ fn categorize_syscall(name: &str) -> &'static str {
 /// Print the diagnostic report in human-readable format
 fn print_report(report: &DiagnosticReport) {
     println!();
-    println!("{}", "═══════════════════════════════════════════════════════════════════".bold());
+    println!(
+        "{}",
+        "═══════════════════════════════════════════════════════════════════".bold()
+    );
     println!("{}", "  CLAUDE CODE CLI DIAGNOSTIC REPORT".bold());
-    println!("{}", "═══════════════════════════════════════════════════════════════════".bold());
+    println!(
+        "{}",
+        "═══════════════════════════════════════════════════════════════════".bold()
+    );
     println!("  {} {}", "Generated:".dimmed(), report.timestamp);
-    println!("  {} {} | {} Darwin {}", "Host:".dimmed(), report.hostname, "OS:".dimmed(), report.os_version);
+    println!(
+        "  {} {} | {} Darwin {}",
+        "Host:".dimmed(),
+        report.hostname,
+        "OS:".dimmed(),
+        report.os_version
+    );
     println!();
 
     // Summary
@@ -1318,13 +1422,17 @@ fn print_report(report: &DiagnosticReport) {
         } else {
             cpu_str.normal()
         };
-        println!("  {}: {}, {:.1}% MEM, {} MB RSS",
+        println!(
+            "  {}: {}, {:.1}% MEM, {} MB RSS",
             format!("PID {}", proc.pid).bold(),
             cpu_colored,
             proc.mem,
             proc.rss_mb
         );
-        println!("  {}", proc.command.chars().take(80).collect::<String>().dimmed());
+        println!(
+            "  {}",
+            proc.command.chars().take(80).collect::<String>().dimmed()
+        );
 
         // Sample results
         if let Some(ref sample) = proc.sample {
@@ -1357,7 +1465,9 @@ fn print_report(report: &DiagnosticReport) {
             println!();
             println!("    {}: {} open", "File Descriptors".cyan(), fd.total_fds);
             if !fd.by_type.is_empty() {
-                let types_str: String = fd.by_type.iter()
+                let types_str: String = fd
+                    .by_type
+                    .iter()
                     .take(5)
                     .map(|(k, v)| format!("{}:{}", k, v))
                     .collect::<Vec<_>>()
@@ -1365,7 +1475,10 @@ fn print_report(report: &DiagnosticReport) {
                 println!("      Types: {}", types_str);
             }
             if !fd.network_connections.is_empty() {
-                println!("      Network: {} connections", fd.network_connections.len());
+                println!(
+                    "      Network: {} connections",
+                    fd.network_connections.len()
+                );
             }
         }
 
@@ -1390,14 +1503,18 @@ fn print_report(report: &DiagnosticReport) {
             if !dtrace.top_syscalls.is_empty() {
                 println!();
                 println!("      {}:", "Top Syscalls".cyan());
-                println!("      {:20} {:>8} {:>12} {:>10}", "SYSCALL", "COUNT", "TOTAL (ms)", "AVG (us)");
+                println!(
+                    "      {:20} {:>8} {:>12} {:>10}",
+                    "SYSCALL", "COUNT", "TOTAL (ms)", "AVG (us)"
+                );
                 for syscall in dtrace.top_syscalls.iter().take(10) {
                     let count_colored = if syscall.count > 1000 {
                         format!("{}", syscall.count).yellow()
                     } else {
                         format!("{}", syscall.count).normal()
                     };
-                    println!("      {:20} {:>8} {:>12.2} {:>10.1}",
+                    println!(
+                        "      {:20} {:>8} {:>12.2} {:>10.1}",
                         syscall.name,
                         count_colored,
                         syscall.total_time_us as f64 / 1000.0,
@@ -1409,7 +1526,11 @@ fn print_report(report: &DiagnosticReport) {
             // I/O operations summary
             if !dtrace.io_operations.is_empty() {
                 println!();
-                println!("      {}: {} operations", "I/O Activity".cyan(), dtrace.io_operations.len());
+                println!(
+                    "      {}: {} operations",
+                    "I/O Activity".cyan(),
+                    dtrace.io_operations.len()
+                );
 
                 // Aggregate by syscall type
                 let mut io_by_type: HashMap<&str, (u32, u64)> = HashMap::new();
@@ -1426,7 +1547,11 @@ fn print_report(report: &DiagnosticReport) {
             // Network operations summary
             if !dtrace.network_operations.is_empty() {
                 println!();
-                println!("      {}: {} operations", "Network Activity".cyan(), dtrace.network_operations.len());
+                println!(
+                    "      {}: {} operations",
+                    "Network Activity".cyan(),
+                    dtrace.network_operations.len()
+                );
 
                 let mut net_by_type: HashMap<&str, u32> = HashMap::new();
                 for op in &dtrace.network_operations {
@@ -1457,7 +1582,10 @@ fn print_report(report: &DiagnosticReport) {
 
     // Remediation suggestions
     println!();
-    println!("{}", "═══════════════════════════════════════════════════════════════════".bold());
+    println!(
+        "{}",
+        "═══════════════════════════════════════════════════════════════════".bold()
+    );
     println!("{}", "RECOMMENDED ACTIONS".bold());
 
     if report.summary.total_cpu > 100.0 {
@@ -1469,7 +1597,10 @@ fn print_report(report: &DiagnosticReport) {
         println!("     $ sample <pid> 10 -file /tmp/claude_sample.txt");
         println!("     $ filtercalltree /tmp/claude_sample.txt");
         println!();
-        println!("  3. {}: Trace syscalls for deeper analysis", "DTrace".cyan());
+        println!(
+            "  3. {}: Trace syscalls for deeper analysis",
+            "DTrace".cyan()
+        );
         println!("     $ sudo claude-diagnose --dtrace --pid <pid> --duration 10");
         println!("     $ sudo claude-diagnose -D --io --pid <pid>  # I/O focused");
         println!();
@@ -1480,15 +1611,25 @@ fn print_report(report: &DiagnosticReport) {
     }
 
     // Check if any DTrace issues were found
-    let has_dtrace_issues = report.processes.iter()
-        .any(|p| p.dtrace.as_ref().map(|d| !d.issues.is_empty()).unwrap_or(false));
+    let has_dtrace_issues = report.processes.iter().any(|p| {
+        p.dtrace
+            .as_ref()
+            .map(|d| !d.issues.is_empty())
+            .unwrap_or(false)
+    });
 
     if has_dtrace_issues {
         println!();
-        println!("  {}: DTrace analysis revealed issues - see process details above", "Note".yellow());
+        println!(
+            "  {}: DTrace analysis revealed issues - see process details above",
+            "Note".yellow()
+        );
     }
 
-    println!("{}", "═══════════════════════════════════════════════════════════════════".bold());
+    println!(
+        "{}",
+        "═══════════════════════════════════════════════════════════════════".bold()
+    );
     println!();
 }
 
@@ -1505,7 +1646,11 @@ fn main() -> Result<()> {
         let procs = get_claude_pids_filtered(Some(pid));
         let filtered: Vec<_> = procs.into_iter().filter(|p| p.pid == pid).collect();
         if filtered.is_empty() {
-            eprintln!("{}: PID {} not found (process may have exited)", "Error".red(), pid);
+            eprintln!(
+                "{}: PID {} not found (process may have exited)",
+                "Error".red(),
+                pid
+            );
             std::process::exit(1);
         }
         filtered
