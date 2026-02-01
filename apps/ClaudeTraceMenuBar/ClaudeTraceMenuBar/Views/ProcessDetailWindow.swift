@@ -3,6 +3,7 @@ import AppKit
 
 struct ProcessDetailWindow: View {
     let process: ProcessInfo
+    var relatedProcess: ProcessInfo?  // Parent (for Chrome MCP) or child (for main Claude)
     var cpuThreshold: Double = 80.0
     var memoryThresholdMB: Int = 1024
     var onRefresh: (() -> Void)?
@@ -34,6 +35,12 @@ struct ProcessDetailWindow: View {
 
                 // Process Info Section
                 processInfoSection
+
+                // Related Process Section (if applicable)
+                if relatedProcess != nil || process.isChromeMcpChild {
+                    Divider()
+                    relatedProcessSection
+                }
             }
             .padding(20)
         }
@@ -265,6 +272,104 @@ struct ProcessDetailWindow: View {
         }
     }
 
+    // MARK: - Related Process Section
+
+    private var relatedProcessSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionHeader("Related Process", icon: "link")
+
+            if process.isChromeMcpChild {
+                // This is a Chrome MCP child process
+                if let parent = relatedProcess {
+                    // Parent is alive
+                    HStack(spacing: 8) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .foregroundStyle(.green)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Parent Claude Process")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            HStack(spacing: 8) {
+                                Text(parent.displayName)
+                                    .font(.system(.body, weight: .medium))
+                                Text("PID \(parent.pid)")
+                                    .font(.system(.caption, design: .monospaced))
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(8)
+
+                    Text("This Chrome MCP process is actively serving its parent Claude instance.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    // Parent is dead - this is an orphan
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Orphaned Chrome MCP")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            HStack(spacing: 8) {
+                                Text("Parent PID \(process.ppid)")
+                                    .font(.system(.body, weight: .medium))
+                                Text("(no longer running)")
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+
+                    Text("The parent Claude process has exited but this Chrome MCP child is still running. Consider terminating it.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if let child = relatedProcess, child.isChromeMcpChild {
+                // This is a main Claude process with a Chrome MCP child
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.down.circle.fill")
+                        .foregroundStyle(.purple)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Chrome MCP Child")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            Text("chrome")
+                                .font(.system(.body, weight: .medium))
+                            Text("MCP")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.purple)
+                                .clipShape(Capsule())
+                            Text("PID \(child.pid)")
+                                .font(.system(.caption, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.purple.opacity(0.1))
+                .cornerRadius(8)
+
+                Text("This Claude instance has an active Chrome MCP connection for browser automation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     // MARK: - Process Info Section
 
     private var processInfoSection: some View {
@@ -424,7 +529,7 @@ struct ProcessDetailWindow: View {
 
 // MARK: - Preview
 
-#Preview {
+#Preview("Main Claude with Chrome child") {
     ProcessDetailWindow(
         process: ProcessInfo(
             pid: 12345,
@@ -435,9 +540,9 @@ struct ProcessDetailWindow: View {
             vszKb: 2097152,
             state: "R",
             elapsedTime: "02:34:56",
-            command: "/Users/user/.local/share/claude/versions/2.1.29 --some-arg --another-arg /Users/user/projects/very-long-project-name-here",
+            command: "claude --dangerously-skip-permissions Working in: my-project",
             version: "2.1.29",
-            isOrphaned: true,
+            isOrphaned: false,
             isOutdated: false,
             openFiles: 42,
             threads: 8,
@@ -445,6 +550,99 @@ struct ProcessDetailWindow: View {
             project: "my-project",
             sessionId: "abc123-def456-789"
         ),
+        relatedProcess: ProcessInfo(
+            pid: 12346,
+            ppid: 12345,
+            cpuPercent: 0.5,
+            memPercent: 0.3,
+            rssKb: 65536,
+            vszKb: 524288,
+            state: "S",
+            elapsedTime: "02:34:50",
+            command: "/Users/user/.local/share/claude/versions/2.1.29 --claude-in-chrome-mcp",
+            version: "2.1.29",
+            isOrphaned: false,
+            isOutdated: false,
+            openFiles: 12,
+            threads: 5,
+            cwd: "/Users/user/projects/my-project",
+            project: "my-project",
+            sessionId: nil
+        ),
+        cpuThreshold: 80.0,
+        memoryThresholdMB: 1024,
+        onRefresh: { print("Refresh tapped") }
+    )
+}
+
+#Preview("Chrome MCP with parent alive") {
+    ProcessDetailWindow(
+        process: ProcessInfo(
+            pid: 12346,
+            ppid: 12345,
+            cpuPercent: 0.5,
+            memPercent: 0.3,
+            rssKb: 65536,
+            vszKb: 524288,
+            state: "S",
+            elapsedTime: "02:34:50",
+            command: "/Users/user/.local/share/claude/versions/2.1.29 --claude-in-chrome-mcp",
+            version: "2.1.29",
+            isOrphaned: false,
+            isOutdated: false,
+            openFiles: 12,
+            threads: 5,
+            cwd: "/Users/user/projects/my-project",
+            project: "my-project",
+            sessionId: nil
+        ),
+        relatedProcess: ProcessInfo(
+            pid: 12345,
+            ppid: 1,
+            cpuPercent: 85.5,
+            memPercent: 2.3,
+            rssKb: 524288,
+            vszKb: 2097152,
+            state: "R",
+            elapsedTime: "02:34:56",
+            command: "claude --dangerously-skip-permissions Working in: my-project",
+            version: "2.1.29",
+            isOrphaned: false,
+            isOutdated: false,
+            openFiles: 42,
+            threads: 8,
+            cwd: "/Users/user/projects/my-project",
+            project: "my-project",
+            sessionId: "abc123-def456-789"
+        ),
+        cpuThreshold: 80.0,
+        memoryThresholdMB: 1024,
+        onRefresh: { print("Refresh tapped") }
+    )
+}
+
+#Preview("Orphaned Chrome MCP") {
+    ProcessDetailWindow(
+        process: ProcessInfo(
+            pid: 12346,
+            ppid: 12345,
+            cpuPercent: 0.5,
+            memPercent: 0.3,
+            rssKb: 65536,
+            vszKb: 524288,
+            state: "S",
+            elapsedTime: "02:34:50",
+            command: "/Users/user/.local/share/claude/versions/2.1.29 --claude-in-chrome-mcp",
+            version: "2.1.29",
+            isOrphaned: false,
+            isOutdated: false,
+            openFiles: 12,
+            threads: 5,
+            cwd: "/Users/user/projects/my-project",
+            project: "my-project",
+            sessionId: nil
+        ),
+        relatedProcess: nil,  // Parent is gone
         cpuThreshold: 80.0,
         memoryThresholdMB: 1024,
         onRefresh: { print("Refresh tapped") }

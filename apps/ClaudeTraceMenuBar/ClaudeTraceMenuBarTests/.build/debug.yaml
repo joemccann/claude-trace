@@ -1,0 +1,90 @@
+client:
+  name: basic
+  file-system: device-agnostic
+tools: {}
+targets:
+  "ClaudeTraceMenuBarTests-arm64-apple-macosx15.0-debug.module": ["<ClaudeTraceMenuBarTests-arm64-apple-macosx15.0-debug.module>"]
+  "ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.module": ["<ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.module>"]
+  "ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.test": ["<ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.test>"]
+  "PackageStructure": ["<PackageStructure>"]
+  "main": []
+  "test": ["<ClaudeTraceMenuBarTests-arm64-apple-macosx15.0-debug.module>","<ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.test>"]
+default: "main"
+nodes:
+  "/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/":
+    is-directory-structure: true
+    content-exclusion-patterns: [".git",".build"]
+commands:
+  "/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/AllTests.swift"]
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/sources"]
+    description: "Write auxiliary file /Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/sources"
+
+  "/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/sources":
+    tool: write-auxiliary-file
+    inputs: ["<sources-file-list>","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.derived/runner.swift"]
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/sources"]
+    description: "Write auxiliary file /Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/sources"
+
+  "/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.derived/runner.swift":
+    tool: test-entry-point-tool
+    inputs: []
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.derived/runner.swift"]
+
+  "/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.product/Objects.LinkFileList":
+    tool: write-auxiliary-file
+    inputs: ["<link-file-list>","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/AllTests.swift.o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/runner.swift.o"]
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.product/Objects.LinkFileList"]
+    description: "Write auxiliary file /Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.product/Objects.LinkFileList"
+
+  "/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt":
+    tool: write-auxiliary-file
+    inputs: ["<swift-get-version>","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"]
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"]
+    always-out-of-date: "true"
+    description: "Write auxiliary file /Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+
+  "<ClaudeTraceMenuBarTests-arm64-apple-macosx15.0-debug.module>":
+    tool: phony
+    inputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/AllTests.swift.o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTests.swiftmodule"]
+    outputs: ["<ClaudeTraceMenuBarTests-arm64-apple-macosx15.0-debug.module>"]
+
+  "<ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.module>":
+    tool: phony
+    inputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/runner.swift.o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTestsPackageTests.swiftmodule"]
+    outputs: ["<ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.module>"]
+
+  "<ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.test>":
+    tool: phony
+    inputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.xctest/Contents/MacOS/ClaudeTraceMenuBarTestsPackageTests"]
+    outputs: ["<ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.test>"]
+
+  "C.ClaudeTraceMenuBarTests-arm64-apple-macosx15.0-debug.module":
+    tool: shell
+    inputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/AllTests.swift","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/sources"]
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/AllTests.swift.o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTests.swiftmodule"]
+    description: "Compiling Swift Module 'ClaudeTraceMenuBarTests' (1 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","ClaudeTraceMenuBarTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTests.swiftmodule","-output-file-map","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/sources","-I","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j14","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-swift-version","5","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","claudetracemenubartests"]
+
+  "C.ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.module":
+    tool: shell
+    inputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.derived/runner.swift","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTests.swiftmodule","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/sources"]
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/runner.swift.o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTestsPackageTests.swiftmodule"]
+    description: "Compiling Swift Module 'ClaudeTraceMenuBarTestsPackageTests' (1 sources)"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-module-name","ClaudeTraceMenuBarTestsPackageTests","-emit-dependencies","-emit-module","-emit-module-path","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTestsPackageTests.swiftmodule","-output-file-map","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/output-file-map.json","-parse-as-library","-incremental","-c","@/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/sources","-I","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules","-target","arm64-apple-macosx14.0","-incremental","-enable-batch-mode","-serialize-diagnostics","-index-store-path","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/index/store","-Onone","-enable-testing","-Xfrontend","-enable-cross-import-overlays","-j14","-DSWIFT_PACKAGE","-DDEBUG","-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE","-module-cache-path","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ModuleCache","-parseable-output","-parse-as-library","-emit-objc-header","-emit-objc-header-path","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/include/ClaudeTraceMenuBarTestsPackageTests-Swift.h","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g","-Xcc","-isysroot","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-Xcc","-F","-Xcc","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-Xcc","-fPIC","-Xcc","-g","-package-name","claudetracemenubartests"]
+
+  "C.ClaudeTraceMenuBarTestsPackageTests-arm64-apple-macosx15.0-debug.test":
+    tool: shell
+    inputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTests.build/AllTests.swift.o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.build/runner.swift.o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.product/Objects.LinkFileList"]
+    outputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.xctest/Contents/MacOS/ClaudeTraceMenuBarTestsPackageTests"]
+    description: "Linking ./.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.xctest/Contents/MacOS/ClaudeTraceMenuBarTestsPackageTests"
+    args: ["/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc","-L","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug","-o","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.xctest/Contents/MacOS/ClaudeTraceMenuBarTestsPackageTests","-module-name","ClaudeTraceMenuBarTestsPackageTests","-Xlinker","-no_warn_duplicate_libraries","-Xlinker","-bundle","-Xlinker","-rpath","-Xlinker","@loader_path/../../../","@/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/ClaudeTraceMenuBarTestsPackageTests.product/Objects.LinkFileList","-Xlinker","-rpath","-Xlinker","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-6.2/macosx","-target","arm64-apple-macosx14.0","-Xlinker","-add_ast_path","-Xlinker","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTests.swiftmodule","-Xlinker","-add_ast_path","-Xlinker","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/.build/arm64-apple-macosx/debug/Modules/ClaudeTraceMenuBarTestsPackageTests.swiftmodule","-plugin-path","/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing","-sdk","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.2.sdk","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks","-F","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/PrivateFrameworks","-I","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-L","/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib","-g"]
+
+  "PackageStructure":
+    tool: package-structure-tool
+    inputs: ["/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/Package.swift","/Users/joemccann/dev/apps/ops/claude-trace/apps/ClaudeTraceMenuBar/ClaudeTraceMenuBarTests/Package.resolved"]
+    outputs: ["<PackageStructure>"]
+    description: "Planning build"
+    allow-missing-inputs: true
+

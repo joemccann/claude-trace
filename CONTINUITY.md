@@ -1,29 +1,39 @@
 # Continuity Ledger
 
 ## Goal (incl. success criteria)
-Associate Chrome MCP processes with their parent Claude instances using PPID relationship.
+Refactor README.md to be marketing-focused "ad" for Claude Trace, with macOS menu bar app prominently featured. Move detailed docs to separate files. Include screenshot placeholders.
 
 ## Constraints/Assumptions
-- Chrome MCP process (`--claude-in-chrome-mcp`) is spawned as a child of the main Claude process
-- PPID of Chrome MCP process == PID of parent Claude process (most robust method)
+- Keep all features documented (nothing deleted, just reorganized)
+- macOS menu bar app should be primary focus, right below banner
+- README should feel like marketing material, not a technical manual
+- Detailed CLI/diagnostics docs move to docs/ folder
+- Screenshot placeholders for user to add images later
 
 ## Key decisions
-- Use PPID relationship (not elapsed time or CWD matching) - most robust
-- Name format: "project #1" for main, "project #1-chrome" for associated MCP
-- Single project with chrome child: no number on main, just "chrome" suffix on child
-- Chrome MCP processes excluded from main numbering sequence
+- Created `docs/` folder with 4 documentation files
+- README structure: Banner → Tagline → App showcase → Features → Install → CLI quickstart → Docs links
+- Docs created: CLI.md, DIAGNOSTICS.md, DEVELOPMENT.md, TROUBLESHOOTING.md
+- Screenshots needed: menubar-dropdown.png, settings-panel.png, notification.png, detail-window.png
 
 ## State
 - Done:
-  - Updated disambiguator logic in MenuBarView.swift
-  - Chrome MCP children now get "-chrome" suffix matching parent's number
-  - Single main process with Chrome child: child shows "chrome" only
-  - Build verified successful
-- Now: Complete - ready for testing
-- Next: User should restart menu bar app to test
+  - Researched README best practices from web sources
+  - Created new marketing-focused README.md
+  - Created docs/CLI.md with all CLI reference content
+  - Created docs/DIAGNOSTICS.md with Rust diagnostic tool docs
+  - Created docs/DEVELOPMENT.md with build/test/contribute info
+  - Created docs/TROUBLESHOOTING.md with common issues
+  - Added screenshot placeholders with captions
+- Now: Complete
+- Next: User to take screenshots and add to assets/
 
 ## Open questions
 - None
 
 ## Working set
-- `apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar/Views/MenuBarView.swift`
+- `README.md` (refactored)
+- `docs/CLI.md` (new)
+- `docs/DIAGNOSTICS.md` (new)
+- `docs/DEVELOPMENT.md` (new)
+- `docs/TROUBLESHOOTING.md` (new)

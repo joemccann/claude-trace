@@ -26,6 +26,9 @@ final class ProcessDetailWindowController {
     /// Kill callback - set this before showing window
     var onKill: ((Int, Bool) -> Void)?
 
+    /// All processes - set this to enable related process lookup
+    var allProcesses: [ProcessInfo] = []
+
     // MARK: - Initialization
 
     private init() {}
@@ -69,9 +72,25 @@ final class ProcessDetailWindowController {
 
     // MARK: - Private Methods
 
+    /// Finds the related process for the given process.
+    /// - For Chrome MCP children: returns the parent Claude process
+    /// - For main Claude processes: returns a Chrome MCP child if one exists
+    private func findRelatedProcess(for process: ProcessInfo) -> ProcessInfo? {
+        if process.isChromeMcpChild {
+            // Find parent by PPID
+            return allProcesses.first { $0.pid == process.ppid }
+        } else {
+            // Find Chrome MCP child by PPID
+            return allProcesses.first { $0.isChromeMcpChild && $0.ppid == process.pid }
+        }
+    }
+
     private func createWindow(for process: ProcessInfo) {
+        // Find related process
+        let related = findRelatedProcess(for: process)
+
         // Create the SwiftUI view
-        let detailView = ProcessDetailWindow(process: process, onKill: onKill)
+        let detailView = ProcessDetailWindow(process: process, relatedProcess: related, onKill: onKill)
 
         // Create hosting controller
         let hosting = NSHostingController(rootView: detailView)
@@ -111,8 +130,11 @@ final class ProcessDetailWindowController {
     }
 
     private func updateWindow(for process: ProcessInfo) {
+        // Find related process
+        let related = findRelatedProcess(for: process)
+
         // Update the SwiftUI view with new process
-        let detailView = ProcessDetailWindow(process: process, onKill: onKill)
+        let detailView = ProcessDetailWindow(process: process, relatedProcess: related, onKill: onKill)
         hostingController?.rootView = detailView
 
         // Update window title

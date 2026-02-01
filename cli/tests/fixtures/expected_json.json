@@ -1,0 +1,55 @@
+{
+  "timestamp": "2024-01-15T12:00:00Z",
+  "hostname": "test-host",
+  "os": "darwin",
+  "os_version": "24.0.0",
+  "latest_local_version": "1.0.50",
+  "process_count": 2,
+  "orphaned_count": 0,
+  "outdated_count": 0,
+  "totals": {
+    "cpu_percent": 35.7,
+    "mem_percent": 1.7,
+    "rss_kb": 786432,
+    "rss_human": "768.0M"
+  },
+  "processes": [
+    {
+      "pid": 12345,
+      "ppid": 12300,
+      "cpu_percent": 25.5,
+      "mem_percent": 1.2,
+      "rss_kb": 524288,
+      "vsz_kb": 1048576,
+      "state": "S+",
+      "elapsed_time": "01:23:45",
+      "command": "/Users/test/.local/share/claude/versions/1.0.50/node cli.js --append-system-prompt \"Working in: myproject\"",
+      "version": "1.0.50",
+      "is_orphaned": false,
+      "is_outdated": false,
+      "open_files": 42,
+      "threads": 8,
+      "cwd": "/Users/test/projects/myproject",
+      "project": "myproject",
+      "session_id": "abc123-def456"
+    },
+    {
+      "pid": 12346,
+      "ppid": 12345,
+      "cpu_percent": 0.0,
+      "mem_percent": 0.5,
+      "rss_kb": 262144,
+      "vsz_kb": 524288,
+      "state": "S",
+      "elapsed_time": "00:05:30",
+      "command": "/Users/test/.local/share/claude/versions/1.0.50/node --claude-in-chrome-mcp",
+      "version": "1.0.50",
+      "is_orphaned": false,
+      "is_outdated": false,
+      "open_files": 15,
+      "threads": 4,
+      "cwd": "/Users/test/projects/myproject",
+      "project": "myproject"
+    }
+  ]
+}

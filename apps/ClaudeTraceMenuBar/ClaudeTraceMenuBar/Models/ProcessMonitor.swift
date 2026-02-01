@@ -109,9 +109,14 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
     }
 
     /// Returns true if this is an MCP (Model Context Protocol) process
-    /// Detected by the --chrome-native-host flag in the command
+    /// Detected by --claude-in-chrome-mcp (Chrome MCP child) or --chrome-native-host (native host) flags
     var isMCPProcess: Bool {
-        command.contains("--chrome-native-host")
+        command.contains("--claude-in-chrome-mcp") || command.contains("--chrome-native-host")
+    }
+
+    /// Returns true if this is specifically a Chrome MCP child process (spawned by a main Claude instance)
+    var isChromeMcpChild: Bool {
+        command.contains("--claude-in-chrome-mcp")
     }
 
     /// Returns true if this is an orphaned Chrome MCP process

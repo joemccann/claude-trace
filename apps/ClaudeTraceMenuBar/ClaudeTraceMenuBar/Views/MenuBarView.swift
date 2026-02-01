@@ -48,6 +48,10 @@ struct MenuBarView: View {
                 }
             }
         }
+        .onChange(of: monitor.processes) { _, newProcesses in
+            // Keep detail window controller updated with current processes for related process lookup
+            ProcessDetailWindowController.shared.allProcesses = newProcesses
+        }
     }
 
     // MARK: - Alert Banner
@@ -184,12 +188,12 @@ struct MenuBarView: View {
         // Build a map of PID -> ProcessInfo for quick lookup
         let pidMap = Dictionary(uniqueKeysWithValues: processes.map { ($0.pid, $0) })
 
-        // Identify Chrome MCP processes and their parent PIDs
-        // Chrome MCP processes have --claude-in-chrome-mcp in their command
+        // Identify Chrome MCP child processes and their parent PIDs
+        // Chrome MCP children have --claude-in-chrome-mcp in their command
         // and their PPID points to a main Claude process
         var chromeMcpParents: [Int: Int] = [:]  // Chrome MCP PID -> Parent Claude PID
         for process in processes {
-            if process.isMCPProcess {
+            if process.isChromeMcpChild {
                 // Check if parent is also a Claude process in our list
                 if pidMap[process.ppid] != nil {
                     chromeMcpParents[process.pid] = process.ppid
@@ -238,11 +242,11 @@ struct MenuBarView: View {
             }
         }
 
-        // Handle Chrome MCP processes whose parent is NOT a Claude process in our list
+        // Handle Chrome MCP child processes whose parent is NOT a Claude process in our list
         // (e.g., standalone MCP or parent already exited)
         for process in processes {
-            if process.isMCPProcess && chromeMcpParents[process.pid] == nil {
-                // This is a Chrome MCP without a known Claude parent
+            if process.isChromeMcpChild && chromeMcpParents[process.pid] == nil {
+                // This is a Chrome MCP child without a known Claude parent
                 // Group it with other same-named processes normally
                 // (already handled above in nameGroups)
             }

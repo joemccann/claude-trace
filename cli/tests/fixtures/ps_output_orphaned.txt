@@ -1,0 +1,2 @@
+12345 1 15.0 2.0 1048576 2097152 S 02:00:00 /Users/test/.local/share/claude/versions/1.0.49/node /Users/test/.local/share/claude/versions/1.0.49/cli.js --append-system-prompt "Working in: oldproject"
+12346 12300 5.0 0.8 262144 524288 S 00:10:00 /Users/test/.local/share/claude/versions/1.0.50/node /Users/test/.local/share/claude/versions/1.0.50/cli.js

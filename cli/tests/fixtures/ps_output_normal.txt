@@ -1,0 +1,3 @@
+12345 12300 25.5 1.2 524288 1048576 S+ 01:23:45 /Users/test/.local/share/claude/versions/1.0.50/node /Users/test/.local/share/claude/versions/1.0.50/cli.js --append-system-prompt "Working in: myproject" --session-id abc123-def456
+12346 12345 0.0 0.5 262144 524288 S 00:05:30 /Users/test/.local/share/claude/versions/1.0.50/node --claude-in-chrome-mcp
+12347 12300 10.2 0.8 131072 262144 S 00:15:00 /Users/test/.local/share/claude/versions/1.0.50/node /Users/test/.local/share/claude/versions/1.0.50/cli.js --append-system-prompt "Working in: another-project"
