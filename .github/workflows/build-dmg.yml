@@ -10,6 +10,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   build-dmg:
     name: Build macOS DMG
@@ -65,13 +68,16 @@ jobs:
           # Create symbolic link to Applications folder
           ln -s /Applications build/dmg/Applications
 
-          # Create DMG
+          # Create versioned DMG
           hdiutil create -volname "$APP_NAME" \
             -srcfolder build/dmg \
             -ov -format UDZO \
             "build/${DMG_NAME}.dmg"
 
-          echo "DMG created: build/${DMG_NAME}.dmg"
+          # Create unversioned DMG for stable download URL
+          cp "build/${DMG_NAME}.dmg" "build/ClaudeTrace.dmg"
+
+          echo "DMG files created:"
           ls -la build/*.dmg
 
       - name: Upload DMG artifact
