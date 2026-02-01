@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Controller for managing floating detail windows for process inspection.
 /// Uses singleton pattern for easy access from anywhere in the app.
+@MainActor
 final class ProcessDetailWindowController {
 
     // MARK: - Singleton
@@ -39,7 +40,6 @@ final class ProcessDetailWindowController {
     /// If a window is already open for this PID, brings it to front.
     /// Otherwise creates or updates the window with the new process.
     /// - Parameter process: The process to display details for
-    @MainActor
     func showWindow(for process: ProcessInfo) {
         if let existingWindow = window, currentPID == process.pid {
             // Window already open for this PID - bring to front
@@ -64,7 +64,6 @@ final class ProcessDetailWindowController {
     }
 
     /// Closes the detail window if open.
-    @MainActor
     func closeWindow() {
         window?.close()
         window = nil
@@ -87,7 +86,6 @@ final class ProcessDetailWindowController {
         }
     }
 
-    @MainActor
     private func createWindow(for process: ProcessInfo) {
         // Find related process
         let related = findRelatedProcess(for: process)
@@ -132,7 +130,6 @@ final class ProcessDetailWindowController {
         window = newWindow
     }
 
-    @MainActor
     private func updateWindow(for process: ProcessInfo) {
         // Find related process
         let related = findRelatedProcess(for: process)

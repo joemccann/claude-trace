@@ -2,7 +2,8 @@ import SwiftUI
 import AppKit
 
 /// Manages the status bar item and popover using AppKit for programmatic control
-class StatusBarController: NSObject, ObservableObject {
+@MainActor
+final class StatusBarController: NSObject, ObservableObject {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var rightClickMenu: NSMenu!
@@ -192,7 +193,6 @@ class StatusBarController: NSObject, ObservableObject {
         }
     }
 
-    @MainActor
     private func updateStatusIcon() {
         guard let button = statusItem.button else { return }
 
