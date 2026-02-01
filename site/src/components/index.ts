@@ -1,0 +1,5 @@
+export { Nav } from './Nav'
+export { Hero } from './Hero'
+export { Features } from './Features'
+export { CLI } from './CLI'
+export { Footer } from './Footer'
