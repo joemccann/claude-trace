@@ -236,11 +236,14 @@ final class ProcessMonitor {
     }
 
     private var timer: Timer?
-    private let notificationService = NotificationService.shared
+    private var notificationService: NotificationService?
 
     init() {
         // Load settings from UserDefaults
         loadSettings()
+        Task { @MainActor [weak self] in
+            self?.notificationService = NotificationService.shared
+        }
     }
 
     func loadSettings() {
@@ -375,7 +378,9 @@ final class ProcessMonitor {
         }
     }
 
+    @MainActor
     private func checkThresholds() {
+        guard let notificationService = notificationService else { return }
         // Check aggregate CPU
         if totals.cpuPercent >= cpuThreshold {
             notificationService.sendNotification(

@@ -44,6 +44,7 @@ enum NotificationType: Hashable {
 
 // MARK: - Notification Service
 
+@MainActor
 final class NotificationService: NSObject {
     static let shared = NotificationService()
 
@@ -220,7 +221,7 @@ final class NotificationService: NSObject {
 
 // MARK: - UNUserNotificationCenterDelegate
 
-extension NotificationService: UNUserNotificationCenterDelegate {
+extension NotificationService: @preconcurrency UNUserNotificationCenterDelegate {
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,

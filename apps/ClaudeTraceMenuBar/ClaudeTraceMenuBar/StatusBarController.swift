@@ -46,14 +46,18 @@ final class StatusBarController: NSObject, ObservableObject {
 
         // Close popover when clicking outside
         eventMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
-            if let self = self, self.popover.isShown {
-                self.popover.performClose(nil)
+            Task { @MainActor [weak self] in
+                if let self = self, self.popover.isShown {
+                    self.popover.performClose(nil)
+                }
             }
         }
 
         // Update icon based on monitor state
         Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
-            self?.updateStatusIcon()
+            Task { @MainActor [weak self] in
+                self?.updateStatusIcon()
+            }
         }
     }
 
@@ -91,7 +95,7 @@ final class StatusBarController: NSObject, ObservableObject {
         rightClickMenu.addItem(quitItem)
     }
 
-    @objc private func handleStatusItemClick(_ sender: NSStatusBarButton) {
+    @objc func handleStatusItemClick(_ sender: NSStatusBarButton) {
         guard let event = NSApp.currentEvent else { return }
 
         if event.type == .rightMouseUp {
@@ -102,7 +106,7 @@ final class StatusBarController: NSObject, ObservableObject {
             statusItem.menu = rightClickMenu
             statusItem.button?.performClick(nil)
             // Clear menu after showing so left-click works normally
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.statusItem.menu = nil
             }
         } else {
@@ -111,7 +115,7 @@ final class StatusBarController: NSObject, ObservableObject {
         }
     }
 
-    @objc private func togglePopover() {
+    @objc func togglePopover() {
         if popover.isShown {
             popover.performClose(nil)
         } else {
@@ -119,12 +123,12 @@ final class StatusBarController: NSObject, ObservableObject {
         }
     }
 
-    @objc private func openSettings() {
+    @objc func openSettings() {
         NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         NSApp.activate(ignoringOtherApps: true)
     }
 
-    @objc private func quitApp() {
+    @objc func quitApp() {
         NSApp.terminate(nil)
     }
 
@@ -136,9 +140,9 @@ final class StatusBarController: NSObject, ObservableObject {
         }
     }
 
-    @objc private func handleOpenPopover(_ notification: Notification) {
+    @objc func handleOpenPopover(_ notification: Notification) {
         guard let userInfo = notification.userInfo else {
-            DispatchQueue.main.async { [weak self] in
+            Task { @MainActor [weak self] in
                 self?.showPopover()
             }
             return
@@ -149,7 +153,8 @@ final class StatusBarController: NSObject, ObservableObject {
             monitor.highlightedPid = pid
 
             // Clear highlight after 5 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 5_000_000_000)
                 if self?.monitor.highlightedPid == pid {
                     self?.monitor.highlightedPid = nil
                 }
@@ -170,7 +175,8 @@ final class StatusBarController: NSObject, ObservableObject {
             monitor.activeAlert = alertInfo
 
             // Clear alert after 10 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+            Task { @MainActor [weak self] in
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
                 if self?.monitor.activeAlert == alertInfo {
                     self?.monitor.activeAlert = nil
                 }
@@ -178,7 +184,7 @@ final class StatusBarController: NSObject, ObservableObject {
         }
 
         // Show the popover
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.showPopover()
         }
     }
