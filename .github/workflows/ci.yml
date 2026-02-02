@@ -1,10 +1,16 @@
-name: CI
+name: CI - CLI
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'cli/**'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main]
+    paths:
+      - 'cli/**'
+      - '.github/workflows/ci.yml'
 
 env:
   CARGO_TERM_COLOR: always
@@ -56,49 +62,3 @@ jobs:
 
       - name: Verify Bash script help
         run: ./cli/claude-trace --help
-
-  build-app:
-    name: Build Menu Bar App
-    runs-on: macos-14  # macOS 14 Sonoma for @Observable support
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Select Xcode version
-        run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
-
-      - name: Build menu bar app
-        run: |
-          xcodebuild -project apps/ClaudeTraceMenuBar/ClaudeTraceMenuBar.xcodeproj \
-            -scheme ClaudeTraceMenuBar \
-            -configuration Release \
-            -destination 'platform=macOS' \
-            build
-
-  build-site:
-    name: Build Website
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: site/package-lock.json
-
-      - name: Install dependencies
-        working-directory: site
-        run: npm ci
-
-      - name: Lint
-        working-directory: site
-        run: npm run lint
-
-      - name: Build
-        working-directory: site
-        run: npm run build
