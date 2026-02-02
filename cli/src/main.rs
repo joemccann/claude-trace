@@ -733,8 +733,8 @@ fn extract_io_operations(output: &str) -> Vec<IoOperation> {
                 .get(2)
                 .and_then(|m| {
                     let s = m.as_str();
-                    if s.starts_with("0x") {
-                        i32::from_str_radix(&s[2..], 16).ok()
+                    if let Some(stripped) = s.strip_prefix("0x") {
+                        i32::from_str_radix(stripped, 16).ok()
                     } else {
                         s.parse::<i32>().ok()
                     }
@@ -1086,15 +1086,16 @@ fn check_memory_pressure() -> MemoryInfo {
     if success {
         let mut page_size: u64 = 16384;
 
+        let digit_re = Regex::new(r"(\d+)").unwrap();
         for line in stdout.lines() {
             if line.to_lowercase().contains("page size") {
-                if let Some(caps) = Regex::new(r"(\d+)").unwrap().captures(line) {
+                if let Some(caps) = digit_re.captures(line) {
                     if let Ok(n) = caps[1].parse::<u64>() {
                         page_size = n;
                     }
                 }
             } else if line.contains("Pages free") {
-                if let Some(caps) = Regex::new(r"(\d+)").unwrap().captures(line) {
+                if let Some(caps) = digit_re.captures(line) {
                     if let Ok(n) = caps[1].parse::<u64>() {
                         result.free_memory_mb = (n * page_size) / (1024 * 1024);
                     }
