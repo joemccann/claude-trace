@@ -12,16 +12,28 @@ interface CarouselSlide {
 
 const slides: CarouselSlide[] = [
   {
-    src: '/processes-view.png',
-    alt: 'Claude Trace showing multiple Claude processes with CPU and memory usage',
-    title: 'Real-time Process Monitor',
-    description: 'See every Claude process at a glance—CPU usage, memory consumption, and project associations in your menu bar.',
+    src: '/menubar-dropdown.png',
+    alt: 'Claude Trace menu bar dropdown showing process list with CPU and memory stats',
+    title: 'See All Sessions at a Glance',
+    description: 'A native macOS app that lives in your menu bar. Always watching, never in the way.',
   },
   {
-    src: '/menubar-dropdown.png',
-    alt: 'Claude Trace menu bar dropdown interface',
-    title: 'Native Menu Bar App',
-    description: 'Lives in your menu bar. One click to see all Claude sessions. No terminal required.',
+    src: '/settings-panel.png',
+    alt: 'Claude Trace settings panel showing threshold configuration',
+    title: 'Configure Thresholds',
+    description: 'Set thresholds for CPU and memory. Get alerted when something goes wrong—before your laptop becomes a space heater.',
+  },
+  {
+    src: '/notification.png',
+    alt: 'macOS notification showing CPU threshold exceeded',
+    title: 'Notifications That Matter',
+    description: 'Know immediately when Claude goes rogue. Claude Trace watches in the background and alerts you when thresholds are exceeded.',
+  },
+  {
+    src: '/detail-window.png',
+    alt: 'Claude Trace process detail window showing expanded info',
+    title: 'Deep Dive Into Any Session',
+    description: 'Double-click any process to open a detailed view with full diagnostics, file descriptors, and thread info.',
   },
   {
     src: '/cli-output.png',
