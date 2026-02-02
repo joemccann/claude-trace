@@ -9,34 +9,53 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Firecrawl-inspired dark mode palette
+        'bg-base': '#0a0a0a',
+        'bg-surface': '#171717',
+        'bg-raised': '#1f1f1f',
         'bg-primary': '#0a0a0a',
-        'bg-secondary': '#141414',
-        'bg-elevated': '#1a1a1a',
-        'text-primary': '#fafafa',
-        'text-secondary': '#a1a1aa',
-        'text-muted': '#71717a',
+        'bg-secondary': '#171717',
+        'bg-elevated': '#1f1f1f',
+        // Text
+        'text-primary': '#f5f5f5',
+        'text-secondary': '#a3a3a3',
+        'text-muted': '#737373',
+        // Borders (Firecrawl style)
+        'border-faint': '#2a2a2a',
+        'border-muted': '#333333',
+        'border-loud': '#404040',
+        // Claude brand accent
+        'accent': '#d97757',
+        'accent-hover': '#e08a6d',
+        'accent-muted': 'rgba(217, 119, 87, 0.1)',
+        // Status colors
+        'success': '#5cd47f',
+        'warning': '#f0c550',
+        'error': '#f05545',
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-jetbrains)', 'monospace'],
+        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-geist-mono)', 'monospace'],
+      },
+      borderRadius: {
+        'none': '0px',
+        'sm': '2px',
+        'DEFAULT': '2px',
+        'md': '4px',
+        'lg': '4px',
       },
       animation: {
-        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
-        'scale-in': 'scaleIn 0.6s ease-out forwards',
-        'glow-pulse': 'glowPulse 2s ease-in-out infinite',
+        'fade-in-up': 'fadeInUp 0.5s ease-out forwards',
+        'fade-in': 'fadeIn 0.5s ease-out forwards',
       },
       keyframes: {
         fadeInUp: {
-          '0%': { opacity: '0', transform: 'translateY(20px)' },
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
-        scaleIn: {
-          '0%': { opacity: '0', transform: 'scale(0.95)' },
-          '100%': { opacity: '1', transform: 'scale(1)' },
-        },
-        glowPulse: {
-          '0%, 100%': { boxShadow: '0 0 20px rgba(34, 211, 238, 0.3)' },
-          '50%': { boxShadow: '0 0 40px rgba(34, 211, 238, 0.5)' },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
       },
     },

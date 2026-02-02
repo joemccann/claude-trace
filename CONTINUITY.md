@@ -1,52 +1,47 @@
 # Continuity Ledger
 
 ## Goal (incl. success criteria)
-Create a one-page Next.js marketing website for Claude Trace, hosted on Vercel. Use README content for viral marketing and SEO.
+Redesign claude-trace.com website with Firecrawl-inspired design system using Claude brand colors.
+
+**Success criteria:** Site uses Firecrawl's minimalist aesthetic (thin borders, no shadows, sharp corners, monospace data) with Claude coral `#d97757` as primary accent.
 
 ## Constraints/Assumptions
-- One-page site (landing page style)
-- Next.js 14 App Router + Tailwind CSS
-- Dark minimal design (Option 1 selected)
-- Vercel-ready
+- Existing Next.js 14 + Tailwind site in `/site` directory
+- Maintain feature parity with existing content
+- No image mockups - implement directly in code
 
 ## Key decisions
-- Selected Option 1: Minimal Dark design
-- Color palette: #0a0a0a bg, #22d3ee cyan accent
-- Fonts: Inter + JetBrains Mono
-- Components: Nav, Hero, Features, CLI, Footer
-- Dynamic OG images via Next.js file convention (not static files)
-- Programmatic SEO: 8 troubleshooting guide pages targeting long-tail keywords
+- **Color Palette**: Firecrawl dark mode (`#0a0a0a` base, `#171717` surface, `#2a2a2a` borders) + Claude coral `#d97757`
+- **Typography**: Geist Sans + Geist Mono (installed via `geist` npm package)
+- **Style**: Flat design, 2px max border-radius, thin 1px borders, no shadows/gradients/glows
+- **Components**: Surgical minimalist aesthetic matching Firecrawl's developer tool vibe
 
 ## State
 - Done:
-  - Created site/ folder with Next.js project
-  - Configured Tailwind CSS with custom theme
-  - Built all page components (Nav, Hero, Features, CLI, Footer)
-  - Added SEO metadata with Open Graph
-  - Copied assets to public/
-  - Added dynamic OpenGraph images (opengraph-image.tsx, twitter-image.tsx)
-  - Updated layout.tsx to use file convention for OG images
-  - Added programmatic SEO guides section (/guides/[slug])
-  - 8 troubleshooting guides targeting: CPU, memory, orphans, slow response, multi-session, outdated, kill, flamegraph
-  - Each guide has: HowTo schema, breadcrumb schema, dynamic OG images
-  - Updated sitemap with all guide URLs
-  - Build requires NODE_ENV=production (fixed in package.json)
-  - Production build successful (87.1KB first load)
-- Now: Complete - ready for Vercel deployment
-- Next: User deploys to Vercel
+  - Extracted Firecrawl design system from firecrawl.dev
+  - Identified Claude brand coral color: `#d97757`
+  - Updated `tailwind.config.ts` with new color tokens and design system
+  - Updated `globals.css` with CSS variables and utility classes
+  - Updated `layout.tsx` to use Geist fonts
+  - Rewrote `Nav.tsx` - flat design, sharp corners, accent color
+  - Rewrote `Hero.tsx` - minimal badges, clean CTAs, no glows
+  - Rewrote `Features.tsx` - numbered grid with hover states
+  - Rewrote `CLI.tsx` - code-focused, monospace styling
+  - Rewrote `Footer.tsx` - minimal footer
+  - Installed `geist` font package
+  - Verified build passes
+- Now: Complete - all components updated
+- Next: User review of changes, run `cd site && npm run dev` to preview
 
 ## Open questions
-- None (NODE_ENV issue resolved by setting it explicitly in build script)
+- None
 
 ## Working set
-- `site/` - Next.js project (ready to deploy)
-- `site/src/app/page.tsx` - Main page
-- `site/src/app/guides/` - Programmatic SEO guides
-  - `data.ts` - Guide content data
-  - `page.tsx` - Guides index
-  - `[slug]/page.tsx` - Individual guide template
-  - `[slug]/opengraph-image.tsx` - Dynamic OG for each guide
-- `site/src/app/opengraph-image.tsx` - Root OG image
-- `site/src/app/twitter-image.tsx` - Root Twitter image
-- `site/src/components/` - Nav, Hero, Features, CLI, Footer
-- `site/public/` - Images
+- `site/tailwind.config.ts` - Design tokens
+- `site/src/app/globals.css` - CSS variables
+- `site/src/app/layout.tsx` - Font setup
+- `site/src/components/Nav.tsx`
+- `site/src/components/Hero.tsx`
+- `site/src/components/Features.tsx`
+- `site/src/components/CLI.tsx`
+- `site/src/components/Footer.tsx`

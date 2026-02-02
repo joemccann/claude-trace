@@ -1,19 +1,8 @@
 import type { Metadata } from 'next'
-import { Inter, JetBrains_Mono } from 'next/font/google'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import { JsonLd } from '@/components/JsonLd'
 import './globals.css'
-
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-  display: 'swap',
-})
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains',
-  display: 'swap',
-})
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://claude-trace.com'),
@@ -32,13 +21,11 @@ export const metadata: Metadata = {
     title: 'Claude Trace | Monitor Claude Code Performance',
     description: 'Your Claude Code is slow. Here\'s why. Real-time CPU and memory monitoring.',
     siteName: 'Claude Trace',
-    // Images are auto-generated via opengraph-image.tsx
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Claude Trace',
     description: 'Your Claude Code is slow. Here\'s why.',
-    // Images are auto-generated via twitter-image.tsx
   },
   robots: {
     index: true,
@@ -59,8 +46,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="font-sans antialiased">
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="font-sans antialiased grain-overlay">
         <JsonLd />
         {children}
       </body>
