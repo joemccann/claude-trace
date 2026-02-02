@@ -1,4 +1,4 @@
-import Image from 'next/image'
+import { ImageCarousel } from './ImageCarousel'
 
 export function Hero() {
   return (
@@ -49,19 +49,9 @@ export function Hero() {
           </a>
         </div>
 
-        {/* Hero Image */}
-        <div className="relative animate-fade-in opacity-0 delay-500">
-          <div className="absolute inset-0 bg-gradient-to-t from-bg-base via-transparent to-transparent z-10 pointer-events-none"></div>
-          <div className="relative border border-border-faint overflow-hidden">
-            <Image
-              src="/menubar-dropdown.png"
-              alt="Claude Trace Menu Bar showing real-time CPU and memory monitoring"
-              width={800}
-              height={600}
-              className="w-full h-auto"
-              priority
-            />
-          </div>
+        {/* Image Carousel */}
+        <div className="animate-fade-in opacity-0 delay-500">
+          <ImageCarousel />
         </div>
       </div>
 
