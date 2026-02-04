@@ -530,13 +530,11 @@ extension ProcessMonitor {
 
                     let data = pipe.fileHandleForReading.readDataToEndOfFile()
                     let output = String(data: data, encoding: .utf8) ?? ""
+                    let exitCode = process.terminationStatus
 
-                    if output.contains("latest version") || output.contains("newer than npm") {
-                        // Extract version from output
-                        let version = self.latestLocalVersion ?? "unknown"
-                        continuation.resume(returning: VersionCheckResult.upToDate(version: version))
-                    } else if output.contains("Update available") {
-                        // Parse current and latest versions
+                    // Check for "Update available" FIRST - the CLI returns exit code 2 for this case
+                    if output.contains("Update available") {
+                        // Parse current and latest versions from "X.Y.Z → A.B.C" format
                         if let match = output.range(of: #"(\d+\.\d+\.\d+) → (\d+\.\d+\.\d+)"#, options: .regularExpression) {
                             let versionStr = String(output[match])
                             let parts = versionStr.split(separator: " ")
@@ -556,8 +554,14 @@ extension ProcessMonitor {
                                 latest: "newer"
                             ))
                         }
-                    } else if output.contains("Error") || process.terminationStatus != 0 {
-                        continuation.resume(returning: VersionCheckResult.error(message: "Failed to check version"))
+                    } else if output.contains("latest version") || output.contains("newer than npm") {
+                        // Extract version from output - exit code 0
+                        let version = self.latestLocalVersion ?? "unknown"
+                        continuation.resume(returning: VersionCheckResult.upToDate(version: version))
+                    } else if output.contains("Error") || (exitCode != 0 && exitCode != 2) {
+                        // Exit code 1 = error, exit code 2 = update available (handled above)
+                        let errorMsg = output.isEmpty ? "Failed to check version" : output.trimmingCharacters(in: .whitespacesAndNewlines)
+                        continuation.resume(returning: VersionCheckResult.error(message: errorMsg))
                     } else {
                         continuation.resume(returning: VersionCheckResult.upToDate(version: self.latestLocalVersion ?? "unknown"))
                     }
