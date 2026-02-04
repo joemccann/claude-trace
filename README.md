@@ -36,6 +36,7 @@ A native macOS app that lives in your menu bar. Always watching, never in the wa
 - **Native Notifications** — Get alerted before your fans spin up
 - **One-Click Kill** — Stop runaway processes instantly
 - **Orphan Detection** — Find and clean up zombie sessions
+- **Version Detection** — Know which sessions are running outdated Claude Code
 - **Launch at Login** — Set it and forget it
 
 <!-- SCREENSHOT: Settings panel showing threshold configuration -->
@@ -43,6 +44,17 @@ A native macOS app that lives in your menu bar. Always watching, never in the wa
   <img src="assets/settings-panel.png" alt="Settings" width="350" />
   <br />
   <em>Configure thresholds to match your workflow</em>
+</p>
+
+### Outdated Version Detection
+
+Spot processes running old versions of Claude Code. Claude Trace compares each running session against your installed version and flags any that need updating.
+
+<!-- SCREENSHOT: Menu bar showing outdated processes with version badges -->
+<p align="center">
+  <img src="assets/outdated-detection.png" alt="Outdated Detection" width="400" />
+  <br />
+  <em>See which sessions are running old Claude versions</em>
 </p>
 
 ### Notifications That Matter

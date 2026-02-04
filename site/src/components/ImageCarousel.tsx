@@ -18,6 +18,12 @@ const slides: CarouselSlide[] = [
     description: 'A native macOS app that lives in your menu bar. Always watching, never in the way.',
   },
   {
+    src: '/outdated-detection.png',
+    alt: 'Claude Trace showing outdated processes with version badges',
+    title: 'Outdated Version Detection',
+    description: 'Know which Claude sessions are running old versions. Upgrade outdated processes with a single click.',
+  },
+  {
     src: '/settings-panel.png',
     alt: 'Claude Trace settings panel showing threshold configuration',
     title: 'Configure Thresholds',
