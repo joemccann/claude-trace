@@ -1,6 +1,6 @@
 [package]
 name = "claude-diagnose"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 description = "Advanced diagnostics for Claude Code CLI CPU issues on macOS"
 authors = ["claude-trace contributors"]
