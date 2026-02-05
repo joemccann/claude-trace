@@ -13,6 +13,7 @@
 #   -9, --force              Use SIGKILL instead of SIGTERM (with -K)
 #   --check-version          Check for Claude Code updates
 #   --upgrade                Upgrade Claude Code to latest version
+#   -R, --release-notes      Show latest Claude Code release notes
 #   --install                Install/update claude-trace to /usr/local/bin
 #   --uninstall-app          Remove all Claude Trace menu bar app installations
 #   -h, --help               Show this help message
@@ -45,6 +46,7 @@ KILL_PID=""
 FORCE_KILL=false
 CHECK_VERSION=false
 DO_UPGRADE=false
+SHOW_RELEASE_NOTES=false
 
 # Claude paths
 CLAUDE_VERSIONS_DIR="$HOME/.local/share/claude/versions"
@@ -67,6 +69,7 @@ OPTIONS:
     -9, --force               Use SIGKILL instead of SIGTERM (with -K)
     --check-version           Check if a newer Claude Code version is available
     --upgrade                 Upgrade Claude Code to the latest version
+    -R, --release-notes       Show latest Claude Code release notes from GitHub
     --install                 Install/update claude-trace to /usr/local/bin (requires sudo)
     --uninstall-app           Remove all Claude Trace menu bar app installations
     -h, --help                Show this help message
@@ -82,6 +85,7 @@ EXAMPLES:
     claude-trace -K 12345 -9        # Force kill process 12345 (SIGKILL)
     claude-trace --check-version    # Check for Claude Code updates
     claude-trace --upgrade          # Upgrade to latest Claude Code
+    claude-trace --release-notes    # Show latest release notes
     claude-trace --uninstall-app    # Remove menu bar app installations
 
 OUTPUT FIELDS:
@@ -260,6 +264,42 @@ kill_claude_process() {
     fi
 }
 
+# Show release notes from GitHub
+show_release_notes() {
+    echo -e "${BOLD}Fetching Claude Code release notes...${RESET}\n"
+
+    local response
+    response=$(curl -s -H "Accept: application/vnd.github+json" \
+        "https://api.github.com/repos/anthropics/claude-code/releases/latest" 2>/dev/null)
+
+    if [[ -z "$response" ]]; then
+        echo -e "${RED}Error: Failed to fetch release notes (network error)${RESET}"
+        return 1
+    fi
+
+    # Parse JSON fields using python3 (available on macOS by default)
+    local tag_name body published_at html_url
+    tag_name=$(echo "$response" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('tag_name','unknown'))" 2>/dev/null)
+    body=$(echo "$response" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('body','No release notes available.'))" 2>/dev/null)
+    published_at=$(echo "$response" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()).get('published_at',''); print(d[:10] if d else 'unknown')" 2>/dev/null)
+    html_url=$(echo "$response" | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('html_url',''))" 2>/dev/null)
+
+    if [[ "$tag_name" == "unknown" || -z "$tag_name" ]]; then
+        echo -e "${RED}Error: Could not parse release notes from GitHub${RESET}"
+        return 1
+    fi
+
+    # Display formatted release notes
+    echo -e "${BOLD}${CYAN}Claude Code ${tag_name}${RESET}  ${DIM}(${published_at})${RESET}"
+    echo -e "${DIM}${html_url}${RESET}"
+    echo ""
+    echo -e "${DIM}────────────────────────────────────────────────────${RESET}"
+    echo ""
+    echo "$body"
+    echo ""
+    echo -e "${DIM}────────────────────────────────────────────────────${RESET}"
+}
+
 # Check for Claude Code updates
 check_claude_version() {
     echo -e "${BOLD}Checking Claude Code version...${RESET}\n"
@@ -388,6 +428,10 @@ while [[ $# -gt 0 ]]; do
             DO_UPGRADE=true
             shift
             ;;
+        -R|--release-notes)
+            SHOW_RELEASE_NOTES=true
+            shift
+            ;;
         --install)
             install_cli
             exit $?
@@ -423,6 +467,12 @@ fi
 # Handle upgrade
 if $DO_UPGRADE; then
     upgrade_claude
+    exit $?
+fi
+
+# Handle release notes
+if $SHOW_RELEASE_NOTES; then
+    show_release_notes
     exit $?
 fi
 

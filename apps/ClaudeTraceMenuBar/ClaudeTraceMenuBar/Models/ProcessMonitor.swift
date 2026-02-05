@@ -135,6 +135,50 @@ struct ProcessInfo: Codable, Identifiable, Equatable {
     }
 }
 
+// MARK: - GitHub Release (for fetching release notes)
+
+struct GitHubRelease: Codable {
+    let tagName: String
+    let name: String?
+    let body: String?
+    let htmlUrl: String
+    let publishedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case tagName = "tag_name"
+        case name
+        case body
+        case htmlUrl = "html_url"
+        case publishedAt = "published_at"
+    }
+
+    /// Version string without leading "v" prefix
+    var version: String {
+        tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+    }
+
+    /// Formatted publish date, or nil if unparseable
+    var formattedDate: String? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: publishedAt ?? "") {
+            let display = DateFormatter()
+            display.dateStyle = .medium
+            display.timeStyle = .none
+            return display.string(from: date)
+        }
+        // Try without fractional seconds
+        formatter.formatOptions = [.withInternetDateTime]
+        if let date = formatter.date(from: publishedAt ?? "") {
+            let display = DateFormatter()
+            display.dateStyle = .medium
+            display.timeStyle = .none
+            return display.string(from: date)
+        }
+        return nil
+    }
+}
+
 // MARK: - Alert Info (shown when notification is clicked)
 
 struct AlertInfo: Equatable {
@@ -190,6 +234,14 @@ final class ProcessMonitor {
     // Version check state
     var isCheckingVersion = false
     var versionCheckResult: VersionCheckResult?
+
+    // Release notes state
+    var releaseNotes: String?
+    var releaseNotesVersion: String?
+    var releaseNotesURL: String?
+    var releaseNotesDate: String?
+    var isFetchingReleaseNotes = false
+    var releaseNotesError: String?
 
     // Highlighted process (from notification click)
     var highlightedPid: Int?
@@ -619,6 +671,54 @@ extension ProcessMonitor {
     /// Get all outdated processes
     var outdatedProcesses: [ProcessInfo] {
         processes.filter { $0.outdated }
+    }
+
+    /// Whether release notes are available to show
+    var hasUpdateForReleaseNotes: Bool {
+        outdatedCount > 0 || {
+            if case .updateAvailable = versionCheckResult { return true }
+            return false
+        }()
+    }
+
+    /// Fetch release notes from GitHub API
+    @MainActor
+    func fetchReleaseNotes() async {
+        guard !isFetchingReleaseNotes else { return }
+        isFetchingReleaseNotes = true
+        releaseNotesError = nil
+
+        do {
+            guard let url = URL(string: "https://api.github.com/repos/anthropics/claude-code/releases/latest") else {
+                releaseNotesError = "Invalid URL"
+                isFetchingReleaseNotes = false
+                return
+            }
+
+            var request = URLRequest(url: url)
+            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+            request.timeoutInterval = 15
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+
+            guard let httpResponse = response as? HTTPURLResponse,
+                  httpResponse.statusCode == 200 else {
+                let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
+                releaseNotesError = "GitHub API returned status \(statusCode)"
+                isFetchingReleaseNotes = false
+                return
+            }
+
+            let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
+            releaseNotes = release.body ?? "No release notes available."
+            releaseNotesVersion = release.version
+            releaseNotesURL = release.htmlUrl
+            releaseNotesDate = release.formattedDate
+            isFetchingReleaseNotes = false
+        } catch {
+            releaseNotesError = error.localizedDescription
+            isFetchingReleaseNotes = false
+        }
     }
 }
 

@@ -401,6 +401,18 @@ struct MenuBarView: View {
                 .help("Reset window size")
             }
 
+            // Release notes button (shown when update available or outdated processes exist)
+            if monitor.hasUpdateForReleaseNotes {
+                Button(action: {
+                    ReleaseNotesWindowController.shared.showWindow(monitor: monitor)
+                }) {
+                    Image(systemName: "newspaper")
+                        .foregroundStyle(.teal)
+                }
+                .buttonStyle(.borderless)
+                .help("View release notes")
+            }
+
             // Version check button
             Button(action: { showingVersionCheck = true }) {
                 Image(systemName: "arrow.up.circle")

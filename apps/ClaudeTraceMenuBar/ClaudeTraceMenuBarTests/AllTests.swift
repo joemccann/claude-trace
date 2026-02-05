@@ -296,6 +296,206 @@ final class NotificationTypeTests: XCTestCase {
     }
 }
 
+// MARK: - GitHubRelease Tests
+
+final class GitHubReleaseTests: XCTestCase {
+
+    func testDecodingFullRelease() throws {
+        let json = """
+        {
+          "tag_name": "v1.0.30",
+          "name": "Claude Code v1.0.30",
+          "body": "## What's New\\n\\n- Feature A\\n- Bug fix B",
+          "html_url": "https://github.com/anthropics/claude-code/releases/tag/v1.0.30",
+          "published_at": "2025-01-15T10:30:00Z"
+        }
+        """.data(using: .utf8)!
+
+        let release = try JSONDecoder().decode(TestGitHubRelease.self, from: json)
+
+        XCTAssertEqual(release.tagName, "v1.0.30")
+        XCTAssertEqual(release.name, "Claude Code v1.0.30")
+        XCTAssertEqual(release.body, "## What's New\n\n- Feature A\n- Bug fix B")
+        XCTAssertEqual(release.htmlUrl, "https://github.com/anthropics/claude-code/releases/tag/v1.0.30")
+        XCTAssertEqual(release.publishedAt, "2025-01-15T10:30:00Z")
+    }
+
+    func testDecodingMinimalRelease() throws {
+        let json = """
+        {
+          "tag_name": "1.0.0",
+          "html_url": "https://github.com/anthropics/claude-code/releases/tag/1.0.0"
+        }
+        """.data(using: .utf8)!
+
+        let release = try JSONDecoder().decode(TestGitHubRelease.self, from: json)
+
+        XCTAssertEqual(release.tagName, "1.0.0")
+        XCTAssertNil(release.name)
+        XCTAssertNil(release.body)
+        XCTAssertNil(release.publishedAt)
+    }
+
+    func testVersionStripsVPrefix() {
+        let release = TestGitHubRelease(
+            tagName: "v2.1.30", name: nil, body: nil,
+            htmlUrl: "https://example.com", publishedAt: nil
+        )
+        XCTAssertEqual(release.version, "2.1.30")
+    }
+
+    func testVersionWithoutPrefix() {
+        let release = TestGitHubRelease(
+            tagName: "2.1.30", name: nil, body: nil,
+            htmlUrl: "https://example.com", publishedAt: nil
+        )
+        XCTAssertEqual(release.version, "2.1.30")
+    }
+
+    func testFormattedDateValidISO() {
+        let release = TestGitHubRelease(
+            tagName: "v1.0.0", name: nil, body: nil,
+            htmlUrl: "https://example.com", publishedAt: "2025-03-15T10:30:00Z"
+        )
+        // Should return a non-nil formatted date
+        XCTAssertNotNil(release.formattedDate)
+    }
+
+    func testFormattedDateNilPublishedAt() {
+        let release = TestGitHubRelease(
+            tagName: "v1.0.0", name: nil, body: nil,
+            htmlUrl: "https://example.com", publishedAt: nil
+        )
+        XCTAssertNil(release.formattedDate)
+    }
+
+    func testFormattedDateInvalidString() {
+        let release = TestGitHubRelease(
+            tagName: "v1.0.0", name: nil, body: nil,
+            htmlUrl: "https://example.com", publishedAt: "not-a-date"
+        )
+        XCTAssertNil(release.formattedDate)
+    }
+}
+
+// MARK: - Markdown Parsing Tests
+
+final class MarkdownParsingTests: XCTestCase {
+
+    func testParseHeaders() {
+        let blocks = TestMarkdownParser.parse("# Title\n## Subtitle\n### Section")
+        XCTAssertEqual(blocks.count, 3)
+        if case .header(let level, let text) = blocks[0] {
+            XCTAssertEqual(level, 1)
+            XCTAssertEqual(text, "Title")
+        } else { XCTFail("Expected header block") }
+        if case .header(let level, let text) = blocks[1] {
+            XCTAssertEqual(level, 2)
+            XCTAssertEqual(text, "Subtitle")
+        } else { XCTFail("Expected header block") }
+        if case .header(let level, let text) = blocks[2] {
+            XCTAssertEqual(level, 3)
+            XCTAssertEqual(text, "Section")
+        } else { XCTFail("Expected header block") }
+    }
+
+    func testParseParagraph() {
+        let blocks = TestMarkdownParser.parse("Hello world")
+        XCTAssertEqual(blocks.count, 1)
+        if case .paragraph(let text) = blocks[0] {
+            XCTAssertEqual(text, "Hello world")
+        } else { XCTFail("Expected paragraph block") }
+    }
+
+    func testParseBulletList() {
+        let blocks = TestMarkdownParser.parse("- Item one\n- Item two\n* Item three")
+        XCTAssertEqual(blocks.count, 3)
+        for block in blocks {
+            if case .listItem = block {
+                // OK
+            } else { XCTFail("Expected list item block") }
+        }
+    }
+
+    func testParseNumberedList() {
+        let blocks = TestMarkdownParser.parse("1. First\n2. Second")
+        XCTAssertEqual(blocks.count, 2)
+        if case .listItem(let text, _) = blocks[0] {
+            XCTAssertEqual(text, "First")
+        } else { XCTFail("Expected list item block") }
+    }
+
+    func testParseCodeBlock() {
+        let blocks = TestMarkdownParser.parse("```\nlet x = 1\nlet y = 2\n```")
+        XCTAssertEqual(blocks.count, 1)
+        if case .codeBlock(let code) = blocks[0] {
+            XCTAssertEqual(code, "let x = 1\nlet y = 2")
+        } else { XCTFail("Expected code block") }
+    }
+
+    func testParseHorizontalRule() {
+        let blocks = TestMarkdownParser.parse("---")
+        XCTAssertEqual(blocks.count, 1)
+        if case .divider = blocks[0] {
+            // OK
+        } else { XCTFail("Expected divider block") }
+    }
+
+    func testParseBlankLines() {
+        let blocks = TestMarkdownParser.parse("Hello\n\nWorld")
+        XCTAssertEqual(blocks.count, 3)
+        if case .blank = blocks[1] {
+            // OK
+        } else { XCTFail("Expected blank block") }
+    }
+
+    func testParseMixedContent() {
+        let content = """
+        # Release Notes
+
+        ## Bug Fixes
+
+        - Fixed crash on startup
+        - Improved memory usage
+
+        ## New Features
+
+        ```
+        claude --new-flag
+        ```
+        """
+        let blocks = TestMarkdownParser.parse(content)
+
+        // Count specific block types
+        let headers = blocks.filter { if case .header = $0 { return true }; return false }
+        let listItems = blocks.filter { if case .listItem = $0 { return true }; return false }
+        let codeBlocks = blocks.filter { if case .codeBlock = $0 { return true }; return false }
+
+        XCTAssertEqual(headers.count, 3)
+        XCTAssertEqual(listItems.count, 2)
+        XCTAssertEqual(codeBlocks.count, 1)
+    }
+
+    func testParseIndentedListItems() {
+        let blocks = TestMarkdownParser.parse("- Top level\n  - Nested")
+        XCTAssertEqual(blocks.count, 2)
+        if case .listItem(_, let indent) = blocks[1] {
+            XCTAssertGreaterThan(indent, 0)
+        } else { XCTFail("Expected indented list item") }
+    }
+
+    func testHorizontalRuleVariants() {
+        let dashes = TestMarkdownParser.parse("---")
+        let stars = TestMarkdownParser.parse("***")
+        let underscores = TestMarkdownParser.parse("___")
+
+        for blocks in [dashes, stars, underscores] {
+            XCTAssertEqual(blocks.count, 1)
+            if case .divider = blocks[0] { } else { XCTFail("Expected divider") }
+        }
+    }
+}
+
 // MARK: - CLIError Tests
 
 final class CLIErrorTests: XCTestCase {
@@ -497,6 +697,153 @@ enum TestCLIError: LocalizedError {
         case .nonZeroExit(let code): return "CLI exited with code \(code)"
         case .notFound: return "claude-trace CLI not found"
         }
+    }
+}
+
+// MARK: - Test GitHub Release
+
+struct TestGitHubRelease: Codable {
+    let tagName: String
+    let name: String?
+    let body: String?
+    let htmlUrl: String
+    let publishedAt: String?
+
+    enum CodingKeys: String, CodingKey {
+        case tagName = "tag_name"
+        case name
+        case body
+        case htmlUrl = "html_url"
+        case publishedAt = "published_at"
+    }
+
+    var version: String {
+        tagName.hasPrefix("v") ? String(tagName.dropFirst()) : tagName
+    }
+
+    var formattedDate: String? {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: publishedAt ?? "") {
+            let display = DateFormatter()
+            display.dateStyle = .medium
+            display.timeStyle = .none
+            return display.string(from: date)
+        }
+        formatter.formatOptions = [.withInternetDateTime]
+        if let date = formatter.date(from: publishedAt ?? "") {
+            let display = DateFormatter()
+            display.dateStyle = .medium
+            display.timeStyle = .none
+            return display.string(from: date)
+        }
+        return nil
+    }
+}
+
+// MARK: - Test Markdown Parser
+
+/// Mirrors the parsing logic from MarkdownContentView for standalone testing.
+enum TestMarkdownParser {
+    enum Block {
+        case header(level: Int, text: String)
+        case paragraph(text: String)
+        case codeBlock(code: String)
+        case listItem(text: String, indent: Int)
+        case divider
+        case blank
+    }
+
+    static func parse(_ content: String) -> [Block] {
+        var blocks: [Block] = []
+        let lines = content.components(separatedBy: "\n")
+        var idx = 0
+
+        while idx < lines.count {
+            let line = lines[idx]
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            // Fenced code blocks
+            if trimmed.hasPrefix("```") {
+                var code = ""
+                idx += 1
+                while idx < lines.count {
+                    let codeLine = lines[idx]
+                    if codeLine.trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+                        idx += 1
+                        break
+                    }
+                    code += (code.isEmpty ? "" : "\n") + codeLine
+                    idx += 1
+                }
+                blocks.append(.codeBlock(code: code))
+                continue
+            }
+
+            // Headers
+            if trimmed.hasPrefix("### ") {
+                blocks.append(.header(level: 3, text: String(trimmed.dropFirst(4))))
+                idx += 1
+                continue
+            }
+            if trimmed.hasPrefix("## ") {
+                blocks.append(.header(level: 2, text: String(trimmed.dropFirst(3))))
+                idx += 1
+                continue
+            }
+            if trimmed.hasPrefix("# ") {
+                blocks.append(.header(level: 1, text: String(trimmed.dropFirst(2))))
+                idx += 1
+                continue
+            }
+
+            // Horizontal rule
+            if isHorizontalRule(trimmed) {
+                blocks.append(.divider)
+                idx += 1
+                continue
+            }
+
+            // Bullet list items
+            if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("+ ") {
+                let indent = line.prefix(while: { $0 == " " || $0 == "\t" }).count / 2
+                blocks.append(.listItem(text: String(trimmed.dropFirst(2)), indent: indent))
+                idx += 1
+                continue
+            }
+
+            // Numbered list items
+            if let dotIndex = trimmed.firstIndex(of: "."),
+               trimmed[trimmed.startIndex..<dotIndex].allSatisfy({ $0.isNumber }),
+               !trimmed[trimmed.startIndex..<dotIndex].isEmpty,
+               dotIndex < trimmed.endIndex,
+               trimmed.index(after: dotIndex) < trimmed.endIndex,
+               trimmed[trimmed.index(after: dotIndex)] == " " {
+                let text = String(trimmed[trimmed.index(dotIndex, offsetBy: 2)...])
+                blocks.append(.listItem(text: text, indent: 0))
+                idx += 1
+                continue
+            }
+
+            // Blank line
+            if trimmed.isEmpty {
+                blocks.append(.blank)
+                idx += 1
+                continue
+            }
+
+            // Paragraph
+            blocks.append(.paragraph(text: trimmed))
+            idx += 1
+        }
+
+        return blocks
+    }
+
+    private static func isHorizontalRule(_ line: String) -> Bool {
+        guard line.count >= 3 else { return false }
+        let chars = Set(line.filter { !$0.isWhitespace })
+        return chars.count == 1 && (chars.contains("-") || chars.contains("*") || chars.contains("_"))
     }
 }
 
