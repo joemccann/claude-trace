@@ -217,6 +217,7 @@ struct AlertInfo: Equatable {
 
 // MARK: - Process Monitor
 
+@MainActor
 @Observable
 final class ProcessMonitor {
     // Current state
@@ -261,7 +262,7 @@ final class ProcessMonitor {
     var perProcessMemThresholdMB: Int = 1024  // Per-process memory threshold in MB
 
     // Path to CLI tool
-    private var cliPath: String {
+    private nonisolated var cliPath: String {
         // Look for CLI tool relative to app bundle or in common locations
         // Priority: project path first (for development), then installed paths
         let possiblePaths = [
@@ -293,9 +294,7 @@ final class ProcessMonitor {
     init() {
         // Load settings from UserDefaults
         loadSettings()
-        Task { @MainActor [weak self] in
-            self?.notificationService = NotificationService.shared
-        }
+        notificationService = NotificationService.shared
     }
 
     func loadSettings() {
@@ -332,13 +331,13 @@ final class ProcessMonitor {
         errorMessage = nil
 
         // Fetch immediately
-        Task {
-            await fetchProcessData()
+        Task { [weak self] in
+            await self?.fetchProcessData()
         }
 
         // Then poll at interval
         timer = Timer.scheduledTimer(withTimeInterval: pollingInterval, repeats: true) { [weak self] _ in
-            Task { [weak self] in
+            Task { @MainActor [weak self] in
                 await self?.fetchProcessData()
             }
         }
@@ -355,7 +354,6 @@ final class ProcessMonitor {
         startMonitoring()
     }
 
-    @MainActor
     private func fetchProcessData() async {
         do {
             let output = try await runCLI()
@@ -401,14 +399,15 @@ final class ProcessMonitor {
         return stableProcessOrder.compactMap { processMap[$0] }
     }
 
-    private func runCLI() async throws -> Data {
+    private nonisolated func runCLI() async throws -> Data {
+        let path = cliPath
         return try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [self] in
+            DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
                 let pipe = Pipe()
 
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = [cliPath, "-j", "-v"]
+                process.arguments = [path, "-j", "-v"]
                 process.standardOutput = pipe
                 process.standardError = FileHandle.nullDevice
 
@@ -430,7 +429,6 @@ final class ProcessMonitor {
         }
     }
 
-    @MainActor
     private func checkThresholds() {
         guard let notificationService = notificationService else { return }
         // Check aggregate CPU
@@ -537,9 +535,9 @@ enum VersionCheckResult: Equatable {
 
 extension ProcessMonitor {
     /// Kill a Claude process
-    @MainActor
     func killProcess(pid: Int, force: Bool = false) async -> Bool {
-        let args = force ? [cliPath, "-K", "\(pid)", "-9"] : [cliPath, "-K", "\(pid)"]
+        let path = cliPath
+        let args = force ? [path, "-K", "\(pid)", "-9"] : [path, "-K", "\(pid)"]
 
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
@@ -561,18 +559,19 @@ extension ProcessMonitor {
     }
 
     /// Check for Claude Code updates
-    @MainActor
     func checkForUpdates() async {
         isCheckingVersion = true
         versionCheckResult = nil
 
+        let path = cliPath
+        let currentLocalVersion = latestLocalVersion
         let result = await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [self] in
+            DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
                 let pipe = Pipe()
 
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = [cliPath, "--check-version"]
+                process.arguments = [path, "--check-version"]
                 process.standardOutput = pipe
                 process.standardError = pipe
 
@@ -596,26 +595,26 @@ extension ProcessMonitor {
                                 continuation.resume(returning: VersionCheckResult.updateAvailable(current: current, latest: latest))
                             } else {
                                 continuation.resume(returning: VersionCheckResult.updateAvailable(
-                                    current: self.latestLocalVersion ?? "unknown",
+                                    current: currentLocalVersion ?? "unknown",
                                     latest: "newer"
                                 ))
                             }
                         } else {
                             continuation.resume(returning: VersionCheckResult.updateAvailable(
-                                current: self.latestLocalVersion ?? "unknown",
+                                current: currentLocalVersion ?? "unknown",
                                 latest: "newer"
                             ))
                         }
                     } else if output.contains("latest version") || output.contains("newer than npm") {
                         // Extract version from output - exit code 0
-                        let version = self.latestLocalVersion ?? "unknown"
+                        let version = currentLocalVersion ?? "unknown"
                         continuation.resume(returning: VersionCheckResult.upToDate(version: version))
                     } else if output.contains("Error") || (exitCode != 0 && exitCode != 2) {
                         // Exit code 1 = error, exit code 2 = update available (handled above)
                         let errorMsg = output.isEmpty ? "Failed to check version" : output.trimmingCharacters(in: .whitespacesAndNewlines)
                         continuation.resume(returning: VersionCheckResult.error(message: errorMsg))
                     } else {
-                        continuation.resume(returning: VersionCheckResult.upToDate(version: self.latestLocalVersion ?? "unknown"))
+                        continuation.resume(returning: VersionCheckResult.upToDate(version: currentLocalVersion ?? "unknown"))
                     }
                 } catch {
                     continuation.resume(returning: VersionCheckResult.error(message: error.localizedDescription))
@@ -628,14 +627,14 @@ extension ProcessMonitor {
     }
 
     /// Upgrade Claude Code to latest version
-    @MainActor
     func upgradeClaudeCode() async -> Bool {
+        let path = cliPath
         return await withCheckedContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async { [self] in
+            DispatchQueue.global(qos: .userInitiated).async {
                 let process = Process()
 
                 process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
-                process.arguments = [cliPath, "--upgrade"]
+                process.arguments = [path, "--upgrade"]
                 process.standardOutput = FileHandle.nullDevice
                 process.standardError = FileHandle.nullDevice
 
@@ -651,7 +650,6 @@ extension ProcessMonitor {
     }
 
     /// Kill all orphaned processes
-    @MainActor
     func killAllOrphaned(force: Bool = false) async -> Int {
         let orphanedPids = processes.filter { $0.orphaned }.map { $0.pid }
         var killed = 0
@@ -682,7 +680,6 @@ extension ProcessMonitor {
     }
 
     /// Fetch release notes from GitHub API
-    @MainActor
     func fetchReleaseNotes() async {
         guard !isFetchingReleaseNotes else { return }
         isFetchingReleaseNotes = true

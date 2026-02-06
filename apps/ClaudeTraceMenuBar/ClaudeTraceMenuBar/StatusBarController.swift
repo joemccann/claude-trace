@@ -7,7 +7,7 @@ final class StatusBarController: NSObject, ObservableObject {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private var rightClickMenu: NSMenu!
-    private var eventMonitor: Any?
+    private nonisolated(unsafe) var eventMonitor: Any?
     private var monitor: ProcessMonitor
     private var sizeManager: PopoverSizeManager
 
